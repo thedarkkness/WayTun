@@ -1,0 +1,25 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+build/
+/captures
+.externalNativeBuild
+.cxx
+generated-src/
+local.properties
+
+# Claude Code local tooling config (not part of the app)
+.claude/
+
+# Signing material - never commit
+*.keystore
+*.jks
+key.properties

@@ -1,0 +1,58 @@
+<resources>
+    <string name="action_add_tunnel">Добавить туннель</string>
+    <string name="tunnel_list_empty">Нет туннелей. Нажмите «+», чтобы импортировать файл .conf или вставить конфигурацию.</string>
+
+    <string name="notification_channel_vpn_status_name">Состояние VPN</string>
+    <string name="notification_channel_vpn_status_description">Показывает статус подключения активного туннеля</string>
+
+    <string name="vpn_status_connecting">Подключение…</string>
+    <string name="vpn_status_connected">Подключено</string>
+    <string name="vpn_status_disconnecting">Отключение…</string>
+    <string name="vpn_status_disconnected">Отключено</string>
+
+    <string name="vpn_error_unknown">Неизвестная ошибка</string>
+    <string name="vpn_error_native_code">Нативный бэкенд отклонил туннель (код %1$s)</string>
+    <string name="vpn_error_invalid_config">Не удалось запустить: сохранённая конфигурация повреждена</string>
+    <string name="vpn_error_not_authorized">Разрешение на VPN не получено</string>
+    <string name="vpn_error_unable_to_start">Не удалось запустить VPN-сервис</string>
+    <string name="vpn_error_tun_creation">Не удалось создать сетевой интерфейс VPN</string>
+    <string name="vpn_error_dns_resolution">Не удалось определить адрес сервера</string>
+    <string name="vpn_error_missing_config">Нет конфигурации для подключения</string>
+
+    <string name="import_error_field_missing">Отсутствует обязательное поле: %1$s</string>
+    <string name="import_error_field_invalid">Некорректное значение поля: %1$s</string>
+    <string name="import_error_structure">Файл конфигурации повреждён: %1$s</string>
+    <string name="import_error_generic_field">конфигурация</string>
+    <string name="import_success">Туннель «%1$s» импортирован</string>
+    <string name="import_default_name">Новый туннель</string>
+
+    <string name="notification_permission_rationale_title">Разрешить уведомления</string>
+    <string name="notification_permission_rationale_message">WayTun показывает статус подключения, имя туннеля и трафик в постоянном уведомлении во время соединения. Разрешите уведомления, чтобы его видеть.</string>
+    <string name="action_continue">Продолжить</string>
+    <string name="action_not_now">Не сейчас</string>
+    <string name="vpn_permission_denied">Для подключения нужно разрешение на VPN</string>
+    <string name="import_error_file_read">Не удалось прочитать выбранный файл</string>
+
+    <string name="import_preview_title">Импорт туннеля</string>
+    <string name="import_preview_name_label">Имя</string>
+    <string name="import_preview_protocol_label">Протокол</string>
+    <string name="import_preview_address_label">Адрес</string>
+    <string name="import_preview_dns_label">DNS</string>
+    <string name="import_preview_endpoint_label">Endpoint</string>
+    <string name="import_preview_allowed_ips_label">Allowed IPs</string>
+    <string name="import_preview_mtu_label">MTU</string>
+    <string name="import_preview_obfuscation_label">Обфускация</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="value_not_set">—</string>
+
+    <string name="delete_tunnel_title">Удалить туннель?</string>
+    <string name="delete_tunnel_message">«%1$s» будет удалён без возможности восстановления.</string>
+    <string name="action_delete">Удалить</string>
+
+    <string name="detail_label_name">Имя</string>
+    <string name="detail_label_config">Конфигурация</string>
+    <string name="detail_save_success">Сохранено</string>
+    <string name="detail_load_failed">Не удалось открыть туннель</string>
+    <string name="action_back">Назад</string>
+</resources>

@@ -1,0 +1,59 @@
+<resources>
+    <string name="app_name">WayTun</string>
+    <string name="action_add_tunnel">Add tunnel</string>
+    <string name="tunnel_list_empty">No tunnels yet. Tap + to import a .conf file or paste a configuration.</string>
+
+    <string name="notification_channel_vpn_status_name">VPN status</string>
+    <string name="notification_channel_vpn_status_description">Shows the active tunnel\'s connection status</string>
+
+    <string name="vpn_status_connecting">Connecting…</string>
+    <string name="vpn_status_connected">Connected</string>
+    <string name="vpn_status_disconnecting">Disconnecting…</string>
+    <string name="vpn_status_disconnected">Disconnected</string>
+
+    <string name="vpn_error_unknown">Unknown error</string>
+    <string name="vpn_error_native_code">The native backend rejected the tunnel (code %1$s)</string>
+    <string name="vpn_error_invalid_config">Could not start: the saved configuration is invalid</string>
+    <string name="vpn_error_not_authorized">VPN permission was not granted</string>
+    <string name="vpn_error_unable_to_start">Failed to start the VPN service</string>
+    <string name="vpn_error_tun_creation">Failed to create the VPN network interface</string>
+    <string name="vpn_error_dns_resolution">Could not resolve the server address</string>
+    <string name="vpn_error_missing_config">No configuration to connect with</string>
+
+    <string name="import_error_field_missing">Missing required field: %1$s</string>
+    <string name="import_error_field_invalid">Invalid value for field: %1$s</string>
+    <string name="import_error_structure">The configuration file is malformed: %1$s</string>
+    <string name="import_error_generic_field">configuration</string>
+    <string name="import_success">Tunnel \"%1$s\" imported</string>
+    <string name="import_default_name">New tunnel</string>
+
+    <string name="notification_permission_rationale_title">Allow notifications</string>
+    <string name="notification_permission_rationale_message">WayTun shows the connection status, tunnel name and traffic in a persistent notification while connected. Allow notifications so you can see it.</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_not_now">Not now</string>
+    <string name="vpn_permission_denied">VPN permission is required to connect</string>
+    <string name="import_error_file_read">Couldn\'t read the selected file</string>
+
+    <string name="import_preview_title">Import tunnel</string>
+    <string name="import_preview_name_label">Name</string>
+    <string name="import_preview_protocol_label">Protocol</string>
+    <string name="import_preview_address_label">Address</string>
+    <string name="import_preview_dns_label">DNS</string>
+    <string name="import_preview_endpoint_label">Endpoint</string>
+    <string name="import_preview_allowed_ips_label">Allowed IPs</string>
+    <string name="import_preview_mtu_label">MTU</string>
+    <string name="import_preview_obfuscation_label">Obfuscation</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="value_not_set">—</string>
+
+    <string name="delete_tunnel_title">Delete tunnel?</string>
+    <string name="delete_tunnel_message">\"%1$s\" will be permanently deleted.</string>
+    <string name="action_delete">Delete</string>
+
+    <string name="detail_label_name">Name</string>
+    <string name="detail_label_config">Configuration</string>
+    <string name="detail_save_success">Saved</string>
+    <string name="detail_load_failed">Couldn\'t open this tunnel</string>
+    <string name="action_back">Back</string>
+</resources>
