@@ -8,6 +8,7 @@ import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.provider.OpenableColumns
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -257,6 +258,9 @@ fun TunnelListScreen(
             }
         )
     }
+
+    BackHandler(enabled = showQrScanner) { showQrScanner = false }
+    BackHandler(enabled = showReceiveOverlay) { showReceiveOverlay = false }
 
     if (showQrScanner) {
         QrScannerScreen(
