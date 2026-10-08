@@ -21,10 +21,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -49,7 +53,10 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.waytun.app.R
+import com.waytun.app.core.pairing.PairingTarget
 import com.waytun.app.core.parser.TunnelProtocol
+import com.waytun.app.ui.pairing.ReceiveViaNetworkScreen
+import com.waytun.app.ui.scanner.QrScannerScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,6 +65,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun TunnelListScreen(
     onTunnelClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     viewModel: TunnelListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,6 +78,10 @@ fun TunnelListScreen(
     var showNotificationRationale by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<TunnelListItem?>(null) }
     var editedImportName by remember(pendingImport) { mutableStateOf(pendingImport?.suggestedName.orEmpty()) }
+    var showImportMenu by remember { mutableStateOf(false) }
+    var showQrScanner by remember { mutableStateOf(false) }
+    var showReceiveOverlay by remember { mutableStateOf(false) }
+    var pendingPairingTarget by remember { mutableStateOf<PairingTarget?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
@@ -94,6 +106,16 @@ fun TunnelListScreen(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* Connecting proceeds either way; this only affects whether the status notice is visible. */ }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            showQrScanner = true
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.camera_permission_denied)) }
+        }
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -210,17 +232,112 @@ fun TunnelListScreen(
         )
     }
 
+    pendingPairingTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingPairingTarget = null },
+            title = { Text(stringResource(R.string.pairing_select_tunnel_title)) },
+            text = {
+                Column {
+                    uiState.tunnels.forEach { tunnel ->
+                        TextButton(
+                            onClick = {
+                                viewModel.sendTunnelOverNetwork(tunnel.id, target)
+                                pendingPairingTarget = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(tunnel.name) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { pendingPairingTarget = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    if (showQrScanner) {
+        QrScannerScreen(
+            onResult = { text ->
+                showQrScanner = false
+                val pairing = PairingTarget.parse(text)
+                if (pairing != null) {
+                    pendingPairingTarget = pairing
+                } else {
+                    viewModel.onConfigPicked("", text)
+                }
+            },
+            onClose = { showQrScanner = false }
+        )
+        return
+    }
+
+    if (showReceiveOverlay) {
+        val defaultName = stringResource(R.string.pairing_default_name)
+        ReceiveViaNetworkScreen(
+            onReceived = { text ->
+                showReceiveOverlay = false
+                viewModel.onConfigPicked(defaultName, text)
+            },
+            onClose = { showReceiveOverlay = false }
+        )
+        return
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.app_name)) })
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.action_settings))
+                    }
+                }
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { filePickerLauncher.launch(arrayOf("*/*")) }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.action_add_tunnel)
-                )
+            Box {
+                FloatingActionButton(onClick = { showImportMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.action_add_tunnel)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showImportMenu,
+                    onDismissRequest = { showImportMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_import_file)) },
+                        onClick = {
+                            showImportMenu = false
+                            filePickerLauncher.launch(arrayOf("*/*"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_scan_qr)) },
+                        onClick = {
+                            showImportMenu = false
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                                PackageManager.PERMISSION_GRANTED
+                            ) {
+                                showQrScanner = true
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_receive_via_network)) },
+                        onClick = {
+                            showImportMenu = false
+                            showReceiveOverlay = true
+                        }
+                    )
+                }
             }
         }
     ) { innerPadding ->

@@ -10,6 +10,7 @@
     <string name="vpn_status_connected">Connected</string>
     <string name="vpn_status_disconnecting">Disconnecting…</string>
     <string name="vpn_status_disconnected">Disconnected</string>
+    <string name="notification_traffic_format">%1$s · ↓ %2$s ↑ %3$s</string>
 
     <string name="vpn_error_unknown">Unknown error</string>
     <string name="vpn_error_native_code">The native backend rejected the tunnel (code %1$s)</string>
@@ -51,9 +52,39 @@
     <string name="delete_tunnel_message">\"%1$s\" will be permanently deleted.</string>
     <string name="action_delete">Delete</string>
 
+    <string name="action_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_app_version">Version %1$s</string>
+    <string name="settings_check_updates">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You already have the latest version</string>
+    <string name="update_available_title">Update available: %1$s</string>
+    <string name="update_download_install">Download &amp; install</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_downloading_indeterminate">Downloading…</string>
+    <string name="update_ready_install">Install</string>
+    <string name="update_error_no_apk_asset">This release has no APK file attached</string>
+    <string name="update_error_generic">Couldn\'t check for updates: %1$s</string>
+
     <string name="detail_label_name">Name</string>
     <string name="detail_label_config">Configuration</string>
     <string name="detail_save_success">Saved</string>
     <string name="detail_load_failed">Couldn\'t open this tunnel</string>
     <string name="action_back">Back</string>
+
+    <string name="action_import_file">Import from file</string>
+    <string name="action_scan_qr">Scan QR code</string>
+    <string name="action_show_qr">Show QR code</string>
+    <string name="action_receive_via_network">Receive from another device (QR)</string>
+    <string name="qr_too_large">This configuration is too large to fit in a QR code</string>
+    <string name="camera_permission_denied">Camera access is needed to scan a QR code</string>
+
+    <string name="pairing_waiting_for_sender">Scan this code with WayTun on another device</string>
+    <string name="pairing_timeout">No device connected in time</string>
+    <string name="pairing_no_network">No local network connection found</string>
+    <string name="pairing_error_generic">Transfer failed</string>
+    <string name="pairing_select_tunnel_title">Select a tunnel to send</string>
+    <string name="pairing_send_success">Tunnel sent</string>
+    <string name="pairing_send_failed">Couldn\'t send the tunnel: %1$s</string>
+    <string name="pairing_default_name">w-peer</string>
 </resources>

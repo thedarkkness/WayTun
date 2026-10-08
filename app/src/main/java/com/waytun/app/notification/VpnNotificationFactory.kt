@@ -11,8 +11,12 @@ import com.waytun.app.MainActivity
 import com.waytun.app.R
 import com.waytun.app.vpn.TunnelState
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** Instantaneous throughput, in bytes/sec, computed from two [com.waytun.app.vpn.TunnelStats] samples. */
+data class TrafficRate(val downBytesPerSec: Long, val upBytesPerSec: Long)
 
 @Singleton
 class VpnNotificationFactory @Inject constructor(
@@ -31,7 +35,7 @@ class VpnNotificationFactory @Inject constructor(
         manager.createNotificationChannel(channel)
     }
 
-    fun build(tunnelName: String, state: TunnelState): Notification {
+    fun build(tunnelName: String, state: TunnelState, trafficRate: TrafficRate? = null): Notification {
         val statusText = when (state) {
             TunnelState.Connecting -> context.getString(R.string.vpn_status_connecting)
             is TunnelState.Connected -> context.getString(R.string.vpn_status_connected)
@@ -42,6 +46,17 @@ class VpnNotificationFactory @Inject constructor(
         val isOngoing = state is TunnelState.Connecting ||
             state is TunnelState.Connected ||
             state is TunnelState.Disconnecting
+
+        val contentText = if (state is TunnelState.Connected && trafficRate != null) {
+            context.getString(
+                R.string.notification_traffic_format,
+                statusText,
+                formatRate(trafficRate.downBytesPerSec),
+                formatRate(trafficRate.upBytesPerSec)
+            )
+        } else {
+            statusText
+        }
 
         val contentIntent = PendingIntent.getActivity(
             context,
@@ -54,13 +69,22 @@ class VpnNotificationFactory @Inject constructor(
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(tunnelName)
-            .setContentText(statusText)
+            .setContentText(contentText)
             .setSmallIcon(R.drawable.ic_notification_vpn)
             .setOngoing(isOngoing)
             .setOnlyAlertOnce(true)
             .setContentIntent(contentIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+    }
+
+    private fun formatRate(bytesPerSec: Long): String {
+        val bps = bytesPerSec.coerceAtLeast(0)
+        return when {
+            bps < 1024 -> "$bps B/s"
+            bps < 1024 * 1024 -> String.format(Locale.US, "%.0f KB/s", bps / 1024.0)
+            else -> String.format(Locale.US, "%.1f MB/s", bps / (1024.0 * 1024.0))
+        }
     }
 
     companion object {

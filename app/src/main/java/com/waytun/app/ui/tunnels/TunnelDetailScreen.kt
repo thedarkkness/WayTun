@@ -1,5 +1,6 @@
 package com.waytun.app.ui.tunnels
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.waytun.app.R
+import com.waytun.app.core.qr.QrCodeGenerator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +52,7 @@ fun TunnelDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showQrDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
@@ -78,6 +83,28 @@ fun TunnelDetailScreen(
         )
     }
 
+    if (showQrDialog) {
+        val qrBitmap = remember(uiState.configText) { QrCodeGenerator.generate(uiState.configText) }
+        AlertDialog(
+            onDismissRequest = { showQrDialog = false },
+            title = { Text(uiState.name) },
+            text = {
+                if (qrBitmap != null) {
+                    Image(
+                        bitmap = qrBitmap.asImageBitmap(),
+                        contentDescription = uiState.name,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Text(stringResource(R.string.qr_too_large))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showQrDialog = false }) { Text(stringResource(R.string.action_back)) }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -88,6 +115,14 @@ fun TunnelDetailScreen(
                     }
                 },
                 actions = {
+                    if (!uiState.isLoading && !uiState.loadFailed) {
+                        IconButton(onClick = { showQrDialog = true }) {
+                            Icon(
+                                painterResource(R.drawable.ic_qr_code),
+                                contentDescription = stringResource(R.string.action_show_qr)
+                            )
+                        }
+                    }
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete))
                     }

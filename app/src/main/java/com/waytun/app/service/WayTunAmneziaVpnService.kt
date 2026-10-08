@@ -5,22 +5,29 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import com.waytun.app.R
 import com.waytun.app.data.tunnel.TunnelRepository
+import com.waytun.app.notification.TrafficRate
 import com.waytun.app.notification.VpnNotificationFactory
 import com.waytun.app.vpn.ActiveTunnel
 import com.waytun.app.vpn.AmneziaBackend
 import com.waytun.app.vpn.TunnelState
+import com.waytun.app.vpn.TunnelStats
 import com.waytun.app.vpn.VpnBackend
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.amnezia.awg.backend.GoBackend
+
+private const val STATS_POLL_INTERVAL_MS = 1_500L
 
 /**
  * AmneziaWG's counterpart of [WayTunVpnService]. The AmneziaWG library has the exact same
@@ -40,6 +47,8 @@ class WayTunAmneziaVpnService : GoBackend.VpnService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var activeTunnelName: String = ""
+    private var currentState: TunnelState = TunnelState.Disconnected
+    private var statsJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -50,7 +59,13 @@ class WayTunAmneziaVpnService : GoBackend.VpnService() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
         )
         vpnBackend.state.drop(1).onEach { state ->
+            currentState = state
             updateNotification(state)
+            if (state is TunnelState.Connected) {
+                startStatsPolling()
+            } else {
+                stopStatsPolling()
+            }
             if (state is TunnelState.Disconnected) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -87,11 +102,40 @@ class WayTunAmneziaVpnService : GoBackend.VpnService() {
         serviceScope.launch { vpnBackend.stop() }
     }
 
-    private fun updateNotification(state: TunnelState) {
+    private fun updateNotification(state: TunnelState, trafficRate: TrafficRate? = null) {
         val title = activeTunnelName.ifEmpty { getString(R.string.app_name) }
-        val notification = notificationFactory.build(title, state)
+        val notification = notificationFactory.build(title, state, trafficRate)
         getSystemService(NotificationManager::class.java)
             ?.notify(VpnNotificationFactory.NOTIFICATION_ID, notification)
+    }
+
+    private fun startStatsPolling() {
+        if (statsJob?.isActive == true) return
+        statsJob = serviceScope.launch {
+            var previous: TunnelStats? = null
+            var previousAtMillis = System.currentTimeMillis()
+            while (isActive) {
+                delay(STATS_POLL_INTERVAL_MS)
+                val stats = vpnBackend.stats()
+                val nowMillis = System.currentTimeMillis()
+                val prev = previous
+                if (stats != null && prev != null) {
+                    val elapsedSeconds = (nowMillis - previousAtMillis) / 1000.0
+                    if (elapsedSeconds > 0) {
+                        val down = ((stats.rxBytes - prev.rxBytes) / elapsedSeconds).toLong().coerceAtLeast(0)
+                        val up = ((stats.txBytes - prev.txBytes) / elapsedSeconds).toLong().coerceAtLeast(0)
+                        updateNotification(currentState, TrafficRate(down, up))
+                    }
+                }
+                previous = stats
+                previousAtMillis = nowMillis
+            }
+        }
+    }
+
+    private fun stopStatsPolling() {
+        statsJob?.cancel()
+        statsJob = null
     }
 
     override fun onRevoke() {

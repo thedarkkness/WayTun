@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.waytun.app.R
+import com.waytun.app.core.pairing.PairingCrypto
+import com.waytun.app.core.pairing.PairingTarget
 import com.waytun.app.core.parser.ConfigErrorKind
 import com.waytun.app.core.parser.ConfigFieldError
 import com.waytun.app.core.parser.TunnelConfigParser
@@ -16,7 +18,11 @@ import com.waytun.app.vpn.VpnBackend
 import com.waytun.app.vpn.WireGuardBackend
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.DataOutputStream
+import java.io.IOException
+import java.net.Socket
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class TunnelListItem(
     val id: String,
@@ -148,6 +155,43 @@ class TunnelListViewModel @Inject constructor(
 
     fun onImportFileReadFailed() {
         sendMessage(context.getString(R.string.import_error_file_read))
+    }
+
+    /** Sends [tunnelId]'s decrypted config to a device that displayed a "receive via QR" code. */
+    fun sendTunnelOverNetwork(tunnelId: String, target: PairingTarget) {
+        viewModelScope.launch {
+            val rawConfig = tunnelRepository.getDecryptedConfigText(tunnelId).getOrNull()
+            if (rawConfig == null) {
+                sendMessage(context.getString(R.string.vpn_error_unknown))
+                return@launch
+            }
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    Socket(target.ip, target.port).use { socket ->
+                        socket.soTimeout = 15_000
+                        val (iv, ciphertext) = PairingCrypto.encrypt(
+                            target.keyBytes,
+                            rawConfig.toByteArray(Charsets.UTF_8)
+                        )
+                        val output = DataOutputStream(socket.getOutputStream())
+                        output.writeInt(iv.size + ciphertext.size)
+                        output.write(iv)
+                        output.write(ciphertext)
+                        output.flush()
+                    }
+                }
+            }
+            result
+                .onSuccess { sendMessage(context.getString(R.string.pairing_send_success)) }
+                .onFailure { e ->
+                    sendMessage(
+                        context.getString(
+                            R.string.pairing_send_failed,
+                            (e as? IOException)?.message ?: e.message ?: context.getString(R.string.pairing_error_generic)
+                        )
+                    )
+                }
+        }
     }
 
     private fun backendFor(protocol: TunnelProtocol): VpnBackend =

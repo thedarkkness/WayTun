@@ -9,6 +9,7 @@
     <string name="vpn_status_connected">Подключено</string>
     <string name="vpn_status_disconnecting">Отключение…</string>
     <string name="vpn_status_disconnected">Отключено</string>
+    <string name="notification_traffic_format">%1$s · ↓ %2$s ↑ %3$s</string>
 
     <string name="vpn_error_unknown">Неизвестная ошибка</string>
     <string name="vpn_error_native_code">Нативный бэкенд отклонил туннель (код %1$s)</string>
@@ -50,9 +51,39 @@
     <string name="delete_tunnel_message">«%1$s» будет удалён без возможности восстановления.</string>
     <string name="action_delete">Удалить</string>
 
+    <string name="action_settings">Настройки</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_app_version">Версия %1$s</string>
+    <string name="settings_check_updates">Проверить обновления</string>
+    <string name="update_checking">Проверка…</string>
+    <string name="update_up_to_date">У вас уже последняя версия</string>
+    <string name="update_available_title">Доступно обновление: %1$s</string>
+    <string name="update_download_install">Скачать и установить</string>
+    <string name="update_downloading">Загрузка… %1$d%%</string>
+    <string name="update_downloading_indeterminate">Загрузка…</string>
+    <string name="update_ready_install">Установить</string>
+    <string name="update_error_no_apk_asset">В этом релизе нет файла APK</string>
+    <string name="update_error_generic">Не удалось проверить обновления: %1$s</string>
+
     <string name="detail_label_name">Имя</string>
     <string name="detail_label_config">Конфигурация</string>
     <string name="detail_save_success">Сохранено</string>
     <string name="detail_load_failed">Не удалось открыть туннель</string>
     <string name="action_back">Назад</string>
+
+    <string name="action_import_file">Импортировать файл</string>
+    <string name="action_scan_qr">Отсканировать QR-код</string>
+    <string name="action_show_qr">Показать QR-код</string>
+    <string name="action_receive_via_network">Принять с другого устройства (QR)</string>
+    <string name="qr_too_large">Эта конфигурация слишком большая для QR-кода</string>
+    <string name="camera_permission_denied">Для сканирования QR-кода нужен доступ к камере</string>
+
+    <string name="pairing_waiting_for_sender">Отсканируйте этот код в WayTun на другом устройстве</string>
+    <string name="pairing_timeout">Устройство не подключилось вовремя</string>
+    <string name="pairing_no_network">Не найдено подключение к локальной сети</string>
+    <string name="pairing_error_generic">Не удалось передать</string>
+    <string name="pairing_select_tunnel_title">Выберите туннель для отправки</string>
+    <string name="pairing_send_success">Туннель отправлен</string>
+    <string name="pairing_send_failed">Не удалось отправить туннель: %1$s</string>
+    <string name="pairing_default_name">w-peer</string>
 </resources>
