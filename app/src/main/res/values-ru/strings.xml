@@ -83,6 +83,7 @@
     <string name="pairing_no_network">Не найдено подключение к локальной сети</string>
     <string name="pairing_error_generic">Не удалось передать</string>
     <string name="pairing_select_tunnel_title">Выберите туннель для отправки</string>
+    <string name="pairing_sending">Отправка…</string>
     <string name="pairing_send_success">Туннель отправлен</string>
     <string name="pairing_send_failed">Не удалось отправить туннель: %1$s</string>
     <string name="pairing_default_name">w-peer</string>

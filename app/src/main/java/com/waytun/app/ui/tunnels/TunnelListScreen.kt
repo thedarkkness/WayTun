@@ -12,6 +12,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -71,6 +74,7 @@ fun TunnelListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
+    val isSendingTunnel by viewModel.isSendingTunnel.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -240,13 +244,16 @@ fun TunnelListScreen(
             text = {
                 Column {
                     uiState.tunnels.forEach { tunnel ->
-                        TextButton(
-                            onClick = {
-                                viewModel.sendTunnelOverNetwork(tunnel.id, target)
-                                pendingPairingTarget = null
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(tunnel.name) }
+                        ListItem(
+                            headlineContent = { Text(tunnel.name) },
+                            supportingContent = { Text(protocolDisplayName(tunnel.protocol)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.sendTunnelOverNetwork(tunnel.id, target)
+                                    pendingPairingTarget = null
+                                }
+                        )
                     }
                 }
             },
@@ -254,6 +261,22 @@ fun TunnelListScreen(
             dismissButton = {
                 TextButton(onClick = { pendingPairingTarget = null }) {
                     Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    if (isSendingTunnel) {
+        AlertDialog(
+            onDismissRequest = {},
+            confirmButton = {},
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    CircularProgressIndicator()
+                    Text(
+                        stringResource(R.string.pairing_sending),
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
                 }
             }
         )

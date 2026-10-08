@@ -84,6 +84,7 @@
     <string name="pairing_no_network">No local network connection found</string>
     <string name="pairing_error_generic">Transfer failed</string>
     <string name="pairing_select_tunnel_title">Select a tunnel to send</string>
+    <string name="pairing_sending">Sending…</string>
     <string name="pairing_send_success">Tunnel sent</string>
     <string name="pairing_send_failed">Couldn\'t send the tunnel: %1$s</string>
     <string name="pairing_default_name">w-peer</string>

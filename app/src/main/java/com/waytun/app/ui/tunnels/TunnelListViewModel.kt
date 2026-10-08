@@ -1,6 +1,8 @@
 package com.waytun.app.ui.tunnels
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.waytun.app.R
@@ -20,6 +22,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.DataOutputStream
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.Socket
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +37,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private const val CONNECT_TIMEOUT_MS = 8_000
 
 data class TunnelListItem(
     val id: String,
@@ -77,6 +82,9 @@ class TunnelListViewModel @Inject constructor(
 
     private val _pendingImport = MutableStateFlow<PendingImport?>(null)
     val pendingImport: StateFlow<PendingImport?> = _pendingImport.asStateFlow()
+
+    private val _isSendingTunnel = MutableStateFlow(false)
+    val isSendingTunnel: StateFlow<Boolean> = _isSendingTunnel.asStateFlow()
 
     val uiState: StateFlow<TunnelListUiState> = combine(
         tunnelRepository.observeTunnels(),
@@ -160,14 +168,23 @@ class TunnelListViewModel @Inject constructor(
     /** Sends [tunnelId]'s decrypted config to a device that displayed a "receive via QR" code. */
     fun sendTunnelOverNetwork(tunnelId: String, target: PairingTarget) {
         viewModelScope.launch {
+            _isSendingTunnel.value = true
             val rawConfig = tunnelRepository.getDecryptedConfigText(tunnelId).getOrNull()
             if (rawConfig == null) {
+                _isSendingTunnel.value = false
                 sendMessage(context.getString(R.string.vpn_error_unknown))
                 return@launch
             }
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    Socket(target.ip, target.port).use { socket ->
+                    // If one of our own VPN tunnels is active, the default route goes through
+                    // the tun interface, which has no path back to a peer on the local LAN.
+                    // Bind this socket to the underlying Wi-Fi/Ethernet network explicitly so
+                    // pairing still works while connected.
+                    val lanNetwork = findLanNetwork()
+                    Socket().use { socket ->
+                        lanNetwork?.let { it.bindSocket(socket) }
+                        socket.connect(InetSocketAddress(target.ip, target.port), CONNECT_TIMEOUT_MS)
                         socket.soTimeout = 15_000
                         val (iv, ciphertext) = PairingCrypto.encrypt(
                             target.keyBytes,
@@ -181,6 +198,7 @@ class TunnelListViewModel @Inject constructor(
                     }
                 }
             }
+            _isSendingTunnel.value = false
             result
                 .onSuccess { sendMessage(context.getString(R.string.pairing_send_success)) }
                 .onFailure { e ->
@@ -191,6 +209,18 @@ class TunnelListViewModel @Inject constructor(
                         )
                     )
                 }
+        }
+    }
+
+    /** The first non-VPN Wi-Fi or Ethernet network, used to route around an active VPN tunnel. */
+    private fun findLanNetwork(): android.net.Network? {
+        val connectivityManager = context.getSystemService(ConnectivityManager::class.java) ?: return null
+        return connectivityManager.allNetworks.firstOrNull { network ->
+            val caps = connectivityManager.getNetworkCapabilities(network)
+            caps != null &&
+                !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
         }
     }
 
