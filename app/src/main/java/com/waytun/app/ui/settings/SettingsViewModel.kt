@@ -14,6 +14,7 @@ import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,9 +46,16 @@ class SettingsViewModel @Inject constructor(
 
     private var pendingRelease: ReleaseInfo? = null
 
+    // Guard against duplicate concurrent requests from repeated taps (e.g. double-tapping
+    // "Check for updates" or "Download" before the UI has switched out of the idle/available
+    // state). Cleared on completion - including failure - so a retry always starts clean.
+    private var checkJob: Job? = null
+    private var downloadJob: Job? = null
+
     fun checkForUpdates() {
+        if (checkJob?.isActive == true) return
         _updateState.value = UpdateUiState.Checking
-        viewModelScope.launch {
+        checkJob = viewModelScope.launch {
             var result = withContext(Dispatchers.IO) { GitHubReleaseApi.fetchLatest() }
             if (result is ReleaseCheckResult.Failure) {
                 // Transient DNS/network hiccups (e.g. right after Wi-Fi reconnects) are common
@@ -72,9 +80,11 @@ class SettingsViewModel @Inject constructor(
                     )
             }
         }
+        checkJob?.invokeOnCompletion { checkJob = null }
     }
 
     fun downloadAndPrepareInstall() {
+        if (downloadJob?.isActive == true) return
         val release = pendingRelease ?: return
         val url = release.apkDownloadUrl
         val name = release.apkFileName
@@ -82,7 +92,7 @@ class SettingsViewModel @Inject constructor(
             _updateState.value = UpdateUiState.Error(context.getString(R.string.update_error_no_apk_asset))
             return
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        downloadJob = viewModelScope.launch(Dispatchers.IO) {
             ApkDownloader.download(context, url, name) { progress ->
                 _updateState.value = when (progress) {
                     is DownloadProgress.InProgress -> UpdateUiState.Downloading(progress.percent)
@@ -93,9 +103,12 @@ class SettingsViewModel @Inject constructor(
                 }
             }
         }
+        downloadJob?.invokeOnCompletion { downloadJob = null }
     }
 
     fun dismissUpdateDialog() {
+        checkJob?.cancel()
+        downloadJob?.cancel()
         _updateState.value = UpdateUiState.Idle
         pendingRelease = null
     }

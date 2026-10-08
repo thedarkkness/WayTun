@@ -50,6 +50,7 @@ fun SettingsScreen(
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var pendingInstallFile by remember { mutableStateOf<File?>(null) }
+    var installRequested by remember(updateState) { mutableStateOf(false) }
 
     fun startInstall(file: File) {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
@@ -176,7 +177,13 @@ fun SettingsScreen(
 
                     is UpdateUiState.ReadyToInstall -> {
                         Column {
-                            Button(onClick = { requestInstall(state.file) }) {
+                            Button(
+                                enabled = !installRequested,
+                                onClick = {
+                                    installRequested = true
+                                    requestInstall(state.file)
+                                }
+                            ) {
                                 Text(stringResource(R.string.update_ready_install))
                             }
                         }
