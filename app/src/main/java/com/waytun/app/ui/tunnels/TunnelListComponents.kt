@@ -48,6 +48,7 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -492,10 +493,10 @@ fun TunnelRow(
             PingChip(tunnel, onPing)
             TapTarget(onClick = onInfo, size = 38.dp) {
                 Icon(
-                    Icons.Default.Info,
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.action_details),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }

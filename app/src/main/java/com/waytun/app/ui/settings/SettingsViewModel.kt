@@ -4,6 +4,7 @@ import android.content.Context
 import com.waytun.app.BuildConfig
 import com.waytun.app.R
 import com.waytun.app.core.obfuscation.ObfuscationManager
+import com.waytun.app.ui.tunnels.ObfuscationReapplier
 import com.waytun.app.core.obfuscation.ObfuscationSettings
 import com.waytun.app.update.ApkInstaller
 import com.waytun.app.update.DownloadProgress
@@ -39,15 +40,23 @@ sealed interface UpdateUiState {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val obfuscationManager: ObfuscationManager
+    private val obfuscationManager: ObfuscationManager,
+    private val reapplier: ObfuscationReapplier
 ) : ViewModel() {
 
     val obfuscationSettings = obfuscationManager.settings
     val obfuscationProfile = obfuscationManager.profile
 
-    fun updateObfuscation(transform: (ObfuscationSettings) -> ObfuscationSettings) = obfuscationManager.update(transform)
+    /** A change reaches the running tunnel too: it restarts with the new values instead of waiting for a manual reconnect. */
+    fun updateObfuscation(transform: (ObfuscationSettings) -> ObfuscationSettings) {
+        obfuscationManager.update(transform)
+        reapplier.requestReapply()
+    }
 
-    fun regenerateObfuscation() = obfuscationManager.rotateNow()
+    fun regenerateObfuscation() {
+        obfuscationManager.rotateNow()
+        reapplier.requestReapply()
+    }
 
     val appVersionName: String = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
