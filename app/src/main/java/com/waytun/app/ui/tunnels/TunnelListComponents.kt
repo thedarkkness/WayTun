@@ -83,7 +83,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
@@ -195,25 +200,51 @@ fun HeroCard(
                             Spacer(Modifier.width(10.dp))
                         }
                         // One line always (the card keeps the same size for any name); a name that doesn't fit
-                        // slowly scrolls like a ticker instead of wrapping or being cut off.
-                        Text(
-                            hero.title ?: stringResource(R.string.hero_no_tunnel),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = onHero,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier
+                        // slowly scrolls like a ticker, fading out at the edges instead of running hard into the
+                        // flag or the power button. A name that fits stays crisp and still.
+                        var boxWidth by remember { mutableStateOf(0) }
+                        var textWidth by remember { mutableStateOf(0) }
+                        val overflowing = textWidth > boxWidth && boxWidth > 0
+                        Box(
+                            Modifier
                                 .weight(1f, fill = false)
-                                .basicMarquee(
+                                .onSizeChanged { boxWidth = it.width }
+                                .then(
+                                    if (overflowing) Modifier
+                                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                        .drawWithContent {
+                                            drawContent()
+                                            val edge = 18.dp.toPx().coerceAtMost(size.width / 2)
+                                            drawRect(
+                                                Brush.horizontalGradient(
+                                                    0f to Color.Transparent, edge / size.width to Color.Black,
+                                                    1f - edge / size.width to Color.Black, 1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                    else Modifier
+                                )
+                        ) {
+                            Text(
+                                hero.title ?: stringResource(R.string.hero_no_tunnel),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = onHero,
+                                maxLines = 1,
+                                softWrap = false,
+                                onTextLayout = { textWidth = it.size.width },
+                                modifier = Modifier.basicMarquee(
                                     iterations = Int.MAX_VALUE,
                                     initialDelayMillis = 1_500,
                                     repeatDelayMillis = 1_500,
                                     spacing = MarqueeSpacing(40.dp),
                                     velocity = 28.dp
                                 )
-                        )
+                            )
+                        }
                     }
                 }
+                Spacer(Modifier.width(14.dp))
                 PowerButton(hero.phase, onHero, onPower)
             }
             Spacer(Modifier.height(16.dp))

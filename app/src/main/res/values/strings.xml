@@ -285,4 +285,8 @@
     <string name="logs_empty">The log is empty</string>
     <string name="logs_copied">Log copied</string>
     <string name="logs_clear">Clear</string>
+    <string name="settings_section_interface">Interface</string>
+    <string name="interface_plain">Standard</string>
+    <string name="interface_glass">Liquid glass</string>
+    <string name="interface_hint">Standard is flat and light on resources: pick it if the app feels slow on your device.</string>
 </resources>

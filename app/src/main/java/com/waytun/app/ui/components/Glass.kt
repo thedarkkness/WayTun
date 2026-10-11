@@ -50,6 +50,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.drawWithCache
@@ -68,6 +70,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.waytun.app.ui.theme.Cyan
+import com.waytun.app.ui.theme.InterfaceStyle
+import com.waytun.app.ui.theme.LocalInterfaceStyle
 import com.waytun.app.ui.theme.Indigo
 import com.waytun.app.ui.theme.Rose
 import dev.chrisbanes.haze.HazeState
@@ -92,6 +96,11 @@ private fun isLightTheme() = MaterialTheme.colorScheme.background.luminance() > 
 @Composable
 fun LiquidBackground(modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
+    if (LocalInterfaceStyle.current == InterfaceStyle.PLAIN) {
+        // Plain mode: one flat color, nothing to draw per frame.
+        Box(modifier.background(scheme.background))
+        return
+    }
     val light = isLightTheme()
     val base = scheme.background
     Canvas(modifier.background(base)) {
@@ -143,6 +152,29 @@ fun Modifier.glass(
     val light = isLightTheme()
     val overlayBase = MaterialTheme.colorScheme.surfaceContainerHigh
     val white = Color.White
+    if (LocalInterfaceStyle.current == InterfaceStyle.PLAIN) {
+        // Plain mode: an opaque surface and a hairline, no gradients, sheen or rim light.
+        val scheme = MaterialTheme.colorScheme
+        val surface = when (style) {
+            GlassStyle.Card -> scheme.surfaceContainer
+            GlassStyle.Inset -> scheme.surfaceContainerHigh
+            GlassStyle.Raised -> scheme.surfaceContainerHighest
+            GlassStyle.Overlay -> scheme.surfaceContainerHigh
+        }
+        val line = scheme.outlineVariant
+        return this
+            .clip(shape)
+            .drawWithCache {
+                val outline = shape.createOutline(size, layoutDirection, this)
+                val hairline = 1.dp.toPx()
+                onDrawBehind {
+                    drawOutline(outline, surface)
+                    if (tintBrush != null) drawOutline(outline, tintBrush, alpha = tintAlpha)
+                    if (tint != Color.Unspecified) drawOutline(outline, tint)
+                    drawOutline(outline, line, style = Stroke(hairline))
+                }
+            }
+    }
     val (fillTop, fillBottom) = when (style) {
         GlassStyle.Card -> if (light) white.copy(0.74f) to white.copy(0.52f) else white.copy(0.115f) to white.copy(0.055f)
         GlassStyle.Inset -> if (light) white.copy(0.55f) to white.copy(0.35f) else white.copy(0.075f) to white.copy(0.035f)
@@ -202,23 +234,34 @@ fun GlassCard(
     }
 }
 
-/** Round glass button (floating actions, "back to top"). */
+/**
+ * Round glass button (floating actions, "back to top"). With an [accent] it becomes a solid, clearly visible primary
+ * action: an opaque accent fill under the glass sheen and rim, a colored glow and an icon in the on-accent color.
+ */
 @Composable
 fun GlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 56.dp,
     tint: Color = Color.Unspecified,
+    accent: Color = Color.Unspecified,
     content: @Composable () -> Unit
 ) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
+    val scheme = MaterialTheme.colorScheme
+    val solid = accent != Color.Unspecified
+    val base = if (solid) {
+        modifier
             .size(size)
-            .glass(CircleShape, GlassStyle.Raised, tint = tint)
-            .clickable(onClick = onClick)
-    ) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface, content = content)
+            .shadow(if (LocalInterfaceStyle.current == InterfaceStyle.GLASS) 12.dp else 4.dp, CircleShape, ambientColor = accent.copy(alpha = 0.55f), spotColor = accent.copy(alpha = 0.7f))
+            .clip(CircleShape)
+            .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.82f).compositeOver(Color.Black.copy(alpha = 0.25f)))))
+            // The glass sheen and rim only on top of the accent in glass mode; plain mode keeps the flat accent.
+            .then(if (LocalInterfaceStyle.current == InterfaceStyle.GLASS) Modifier.glass(CircleShape, GlassStyle.Inset) else Modifier)
+    } else {
+        modifier.size(size).glass(CircleShape, GlassStyle.Raised, tint = tint)
+    }
+    Box(contentAlignment = Alignment.Center, modifier = base.clickable(onClick = onClick)) {
+        CompositionLocalProvider(LocalContentColor provides if (solid) scheme.onPrimary else scheme.onSurface, content = content)
     }
 }
 
@@ -241,11 +284,12 @@ fun GlassScaffold(
     val haze = rememberHazeState()
     val scheme = MaterialTheme.colorScheme
     val light = isLightTheme()
+    val glassOn = LocalInterfaceStyle.current == InterfaceStyle.GLASS
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     Box(modifier.fillMaxSize()) {
-        LiquidBackground(Modifier.fillMaxSize().hazeSource(haze, zIndex = 0f))
-        Box(Modifier.fillMaxSize().hazeSource(haze, zIndex = 1f)) {
+        LiquidBackground(Modifier.fillMaxSize().then(if (glassOn) Modifier.hazeSource(haze, zIndex = 0f) else Modifier))
+        Box(Modifier.fillMaxSize().then(if (glassOn) Modifier.hazeSource(haze, zIndex = 1f) else Modifier)) {
             content(PaddingValues(top = topInset + BarHeight, bottom = bottomInset))
         }
         val barStyle = HazeStyle(
@@ -258,7 +302,7 @@ fun GlassScaffold(
             Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .hazeEffect(haze, barStyle)
+                .then(if (glassOn) Modifier.hazeEffect(haze, barStyle) else Modifier.background(scheme.surface))
         ) {
             CompositionLocalProvider(LocalContentColor provides scheme.onSurface) {
                 Row(
@@ -277,7 +321,10 @@ fun GlassScaffold(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Brush.horizontalGradient(listOf(Color.Transparent, (if (light) Color(0xFF6B72A8) else Color.White).copy(0.22f), Color.Transparent)))
+                    .background(
+                        if (glassOn) Brush.horizontalGradient(listOf(Color.Transparent, (if (light) Color(0xFF6B72A8) else Color.White).copy(0.22f), Color.Transparent))
+                        else Brush.horizontalGradient(listOf(scheme.outlineVariant, scheme.outlineVariant))
+                    )
             )
         }
         Box(
@@ -309,6 +356,21 @@ private fun BlurBehindDialogWindow(radius: Int = 28) {
     }
 }
 
+/** Plain mode: the same dimmed backdrop, with no blur of the screen behind. */
+@Composable
+private fun DimOnlyDialogWindow() {
+    val view = LocalView.current
+    SideEffect {
+        var parent: ViewParent? = view.parent
+        var provider: DialogWindowProvider? = view as? DialogWindowProvider
+        while (provider == null && parent != null) {
+            provider = parent as? DialogWindowProvider
+            parent = parent.parent
+        }
+        provider?.window?.setDimAmount(0.5f)
+    }
+}
+
 /** Drop-in for Material's AlertDialog: a glass card floating over a blurred copy of the app. */
 @Composable
 fun GlassAlertDialog(
@@ -321,7 +383,7 @@ fun GlassAlertDialog(
     text: (@Composable () -> Unit)? = null
 ) {
     Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BlurBehindDialogWindow()
+        if (LocalInterfaceStyle.current == InterfaceStyle.GLASS) BlurBehindDialogWindow() else DimOnlyDialogWindow()
         GlassCard(
             style = GlassStyle.Overlay,
             shape = RoundedCornerShape(30.dp),

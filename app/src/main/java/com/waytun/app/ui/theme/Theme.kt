@@ -6,6 +6,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -144,7 +146,11 @@ fun WayTunTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    CompositionLocalProvider(LocalWayTunColors provides if (darkTheme) DarkExtras else LightExtras) {
+    val interfaceStyle by InterfaceStyleStore.style.collectAsState()
+    CompositionLocalProvider(
+        LocalWayTunColors provides if (darkTheme) DarkExtras else LightExtras,
+        LocalInterfaceStyle provides interfaceStyle
+    ) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
             typography = Typography,

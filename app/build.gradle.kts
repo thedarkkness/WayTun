@@ -15,14 +15,17 @@ android {
         applicationId = "com.waytun.app"
         minSdk = 29
         targetSdk = 37
-        versionCode = 6
-        versionName = "1.3.1.4"
+        versionCode = 7
+        versionName = "1.3.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            // No private release key yet: release builds are signed with the debug key so they install over
+            // debug builds and update each other. Swap in a real signing config before any store release.
+            signingConfig = signingConfigs.getByName("debug")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")

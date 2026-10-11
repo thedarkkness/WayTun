@@ -163,7 +163,7 @@ fun TunnelDetailScreen(
                 GlassIconButton(
                     onClick = { viewModel.onSave() },
                     size = 56.dp,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                    accent = MaterialTheme.colorScheme.primary
                 ) { Icon(Icons.Default.Check, contentDescription = stringResource(R.string.action_save)) }
             }
         }

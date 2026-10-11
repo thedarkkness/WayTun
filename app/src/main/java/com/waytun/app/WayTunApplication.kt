@@ -13,6 +13,7 @@ class WayTunApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         com.waytun.app.core.log.AppLog.init(this)
+        com.waytun.app.ui.theme.InterfaceStyleStore.init(this)
         // Each VPN service runs in its own process and creates its own Application; only the UI
         // process owns the periodic obfuscation rotation.
         if (Application.getProcessName() == packageName) obfuscationManager.start()

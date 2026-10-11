@@ -284,4 +284,8 @@
     <string name="logs_empty">Журнал пуст</string>
     <string name="logs_copied">Журнал скопирован</string>
     <string name="logs_clear">Очистить</string>
+    <string name="settings_section_interface">Интерфейс</string>
+    <string name="interface_plain">Обычный</string>
+    <string name="interface_glass">Жидкое стекло</string>
+    <string name="interface_hint">«Обычный» плоский и нетребовательный: выберите его, если приложение тормозит на вашем устройстве.</string>
 </resources>

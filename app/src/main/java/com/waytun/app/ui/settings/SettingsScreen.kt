@@ -88,6 +88,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.waytun.app.R
 import com.waytun.app.core.device.DeviceIdentity
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.PaddingValues
+import com.waytun.app.ui.theme.InterfaceStyle
+import com.waytun.app.ui.theme.InterfaceStyleStore
 import com.waytun.app.core.language.AppLanguage
 import com.waytun.app.core.obfuscation.ObfuscationLevel
 import com.waytun.app.core.obfuscation.ObfuscationProfile
@@ -192,8 +197,8 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val scrollState = rememberScrollState()
-    val showScrollTop by remember { derivedStateOf { scrollState.value > 500 } }
+    val listState = rememberLazyListState()
+    val showScrollTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 500 } }
 
     GlassScaffold(
         title = { Text(stringResource(R.string.settings_title)) },
@@ -203,31 +208,35 @@ fun SettingsScreen(
             }
         },
         floatingActionButton = {
-            ScrollToTopButton(visible = showScrollTop, onClick = { scope.launch { scrollState.smoothScrollToTop() } })
+            ScrollToTopButton(visible = showScrollTop, onClick = { scope.launch { listState.smoothScrollToTop() } })
         }
     ) { innerPadding ->
         WayTunSnackbarHost(snackbarHostState)
         // On wide screens (tablets, landscape) the cards stay a readable column in the middle.
+        // A lazy list: only the cards on screen are composed, so the screen opens without a long first frame.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Column(
+        LazyColumn(
+            state = listState,
             modifier = Modifier
                 .widthIn(max = 640.dp)
-                .fillMaxHeight()
-                .verticalScroll(scrollState)
-                .padding(
-                    start = 16.dp, end = 16.dp,
-                    top = innerPadding.calculateTopPadding() + 8.dp,
-                    bottom = innerPadding.calculateBottomPadding()
-                ),
+                .fillMaxHeight(),
+            contentPadding = PaddingValues(
+                start = 16.dp, end = 16.dp,
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 12.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            ObfuscationSection(
-                settings = obfuscation,
-                profile = profile,
-                onUpdate = viewModel::updateObfuscation,
-                onRegenerate = viewModel::regenerateObfuscation
-            )
+            item(key = "obfuscation") {
+                ObfuscationSection(
+                    settings = obfuscation,
+                    profile = profile,
+                    onUpdate = viewModel::updateObfuscation,
+                    onRegenerate = viewModel::regenerateObfuscation
+                )
+            }
 
+            item(key = "network") {
             SettingsCard(stringResource(R.string.settings_section_network), Amber) {
                 SwitchRow(
                     stringResource(R.string.net_block_quic),
@@ -236,7 +245,26 @@ fun SettingsScreen(
                     Amber
                 ) { v -> viewModel.updateObfuscation { it.copy(blockQuic = v) } }
             }
+            }
 
+            item(key = "interface") {
+                val interfaceStyle by InterfaceStyleStore.style.collectAsStateWithLifecycle()
+                SettingsCard(stringResource(R.string.settings_section_interface), Sky) {
+                    GlassSegmented(
+                        labels = listOf(stringResource(R.string.interface_plain), stringResource(R.string.interface_glass)),
+                        selected = if (interfaceStyle == InterfaceStyle.GLASS) 1 else 0,
+                        onSelect = { index -> InterfaceStyleStore.set(if (index == 1) InterfaceStyle.GLASS else InterfaceStyle.PLAIN) }
+                    )
+                    Text(
+                        stringResource(R.string.interface_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+
+            item(key = "language") {
             SettingsCard(stringResource(R.string.settings_section_language), Sky) {
                 val tags = listOf(AppLanguage.AUTO, "en", "ru")
                 GlassSegmented(
@@ -252,7 +280,9 @@ fun SettingsScreen(
                     }
                 )
             }
+            }
 
+            item(key = "about") {
             SettingsCard(stringResource(R.string.settings_section_about), Rose) {
                 InfoRow(
                     stringResource(R.string.app_name),
@@ -277,6 +307,8 @@ fun SettingsScreen(
                 )
                 UpdateSection(updateState, installRequested, { installRequested = true }, viewModel)
             }
+            }
+            item(key = "diagnostics") {
             SettingsCard(stringResource(R.string.settings_section_diagnostics), Sky) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -294,7 +326,7 @@ fun SettingsScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            }
         }
         }
     }

@@ -67,6 +67,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -505,7 +507,7 @@ fun TunnelListScreen(
             Box {
                 GlassIconButton(
                     onClick = { showImportMenu = true },
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                    accent = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -653,7 +655,7 @@ fun TunnelListScreen(
                             },
                             modifier = Modifier.animateItem()
                         ) {
-                            section.tunnels.forEach { tunnel ->
+                            StaggeredRows(section.tunnels) { tunnel ->
                                 TunnelRow(
                                     tunnel = tunnel,
                                     onSelect = { viewModel.onSelectTunnel(tunnel.id) },
@@ -673,6 +675,26 @@ fun TunnelListScreen(
         StatusHud(hud)
     }
 }
+
+/**
+ * Shows the first few rows at once and brings the rest in a few per frame. Composing a long subscription in one go made
+ * the first frame after opening the screen (or coming back to it) stall; the rows below the fold appear a moment
+ * later without anyone noticing, and the animation stays smooth.
+ */
+@Composable
+private fun StaggeredRows(tunnels: List<TunnelListItem>, row: @Composable (TunnelListItem) -> Unit) {
+    var shown by remember { mutableIntStateOf(FIRST_ROWS) }
+    LaunchedEffect(tunnels.size) {
+        while (shown < tunnels.size) {
+            withFrameNanos { }
+            shown = (shown + ROWS_PER_FRAME).coerceAtMost(tunnels.size)
+        }
+    }
+    tunnels.take(shown.coerceAtMost(tunnels.size)).forEach { row(it) }
+}
+
+private const val FIRST_ROWS = 4
+private const val ROWS_PER_FRAME = 3
 
 @Composable
 private fun EmptyState(onAddSubscription: () -> Unit, onPaste: () -> Unit) {
