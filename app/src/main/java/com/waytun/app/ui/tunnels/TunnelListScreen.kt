@@ -705,6 +705,7 @@ private fun EmptyState(onAddSubscription: () -> Unit, onPaste: () -> Unit) {
         Text(
             stringResource(R.string.empty_title),
             style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Text(
