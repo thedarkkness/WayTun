@@ -1,7 +1,11 @@
 package com.waytun.app.ui.settings
 
 import android.content.Context
+import com.waytun.app.BuildConfig
 import com.waytun.app.R
+import com.waytun.app.core.obfuscation.ObfuscationManager
+import com.waytun.app.core.obfuscation.ObfuscationSettings
+import com.waytun.app.update.ApkInstaller
 import com.waytun.app.update.DownloadProgress
 import com.waytun.app.update.ApkDownloader
 import com.waytun.app.update.GitHubReleaseApi
@@ -34,12 +38,24 @@ sealed interface UpdateUiState {
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val obfuscationManager: ObfuscationManager
 ) : ViewModel() {
+
+    val obfuscationSettings = obfuscationManager.settings
+    val obfuscationProfile = obfuscationManager.profile
+
+    fun updateObfuscation(transform: (ObfuscationSettings) -> ObfuscationSettings) = obfuscationManager.update(transform)
+
+    fun regenerateObfuscation() = obfuscationManager.rotateNow()
 
     val appVersionName: String = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
     }.getOrNull() ?: "?"
+
+    // The app is only ever distributed as a debug build (no release signing config exists yet),
+    // so DEBUG is an accurate stand-in for "not an official signed release".
+    val isBetaBuild: Boolean = BuildConfig.DEBUG
 
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
@@ -104,6 +120,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
         downloadJob?.invokeOnCompletion { downloadJob = null }
+    }
+
+    fun installUpdate(file: File) {
+        viewModelScope.launch(Dispatchers.IO) {
+            ApkInstaller.install(context, file).onFailure { e ->
+                _updateState.value = UpdateUiState.Error(
+                    context.getString(R.string.update_error_generic, e.message ?: context.getString(R.string.pairing_error_generic))
+                )
+            }
+        }
     }
 
     fun dismissUpdateDialog() {

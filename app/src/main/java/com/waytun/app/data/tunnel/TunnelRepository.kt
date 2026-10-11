@@ -7,7 +7,9 @@ data class TunnelSummary(
     val id: String,
     val name: String,
     val protocol: TunnelProtocol,
-    val createdAtEpochMillis: Long
+    val createdAtEpochMillis: Long,
+    val subscriptionId: String? = null,
+    val details: String? = null
 )
 
 data class TunnelDetails(
@@ -33,4 +35,7 @@ interface TunnelRepository {
     suspend fun updateTunnel(id: String, name: String, protocol: TunnelProtocol, rawConfigText: String): Result<Unit>
 
     suspend fun deleteTunnel(id: String): Result<Unit>
+
+    /** Fills in the protocol label for tunnels stored before it existed. */
+    suspend fun backfillDetails()
 }

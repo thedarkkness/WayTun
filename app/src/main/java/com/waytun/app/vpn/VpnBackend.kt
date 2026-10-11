@@ -20,7 +20,11 @@ data class TunnelStats(
 data class ActiveTunnel(
     val id: String,
     val displayName: String,
-    val rawConfigText: String
+    val rawConfigText: String,
+    /** Randomized client-side obfuscation values to apply to this start; null = none. */
+    val obfuscation: com.waytun.app.core.obfuscation.ObfuscationProfile? = null,
+    /** Xray engine only: reject UDP/443 so apps fall back from QUIC to TCP. */
+    val blockQuic: Boolean = false
 )
 
 /**

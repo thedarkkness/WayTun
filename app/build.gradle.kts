@@ -15,8 +15,8 @@ android {
         applicationId = "com.waytun.app"
         minSdk = 29
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.3.1"
+        versionCode = 6
+        versionName = "1.3.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +35,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -76,6 +77,13 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.zxing.core)
+    implementation(libs.haze)
+
+    // Per-app language preference (Settings screen language switch)
+
+    // sing-box (VLESS/VMess/Trojan) - prebuilt via gomobile from github.com/sagernet/sing-box's
+    // Xray-core + wrapper; see third_party/xray-build/BUILD.md.
+    implementation(files("libs/xraycore.aar"))
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

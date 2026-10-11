@@ -35,15 +35,24 @@ class VpnNotificationFactory @Inject constructor(
         manager.createNotificationChannel(channel)
     }
 
-    fun build(tunnelName: String, state: TunnelState, trafficRate: TrafficRate? = null): Notification {
-        val statusText = when (state) {
+    fun build(
+        tunnelName: String,
+        state: TunnelState,
+        trafficRate: TrafficRate? = null,
+        disconnectIntent: PendingIntent? = null,
+        reconnectAttempt: Int? = null
+    ): Notification {
+        val statusText = if (reconnectAttempt != null && state !is TunnelState.Connected) {
+            context.getString(R.string.vpn_status_reconnecting, reconnectAttempt)
+        } else when (state) {
             TunnelState.Connecting -> context.getString(R.string.vpn_status_connecting)
             is TunnelState.Connected -> context.getString(R.string.vpn_status_connected)
             TunnelState.Disconnecting -> context.getString(R.string.vpn_status_disconnecting)
             TunnelState.Disconnected -> context.getString(R.string.vpn_status_disconnected)
             is TunnelState.Error -> state.message
         }
-        val isOngoing = state is TunnelState.Connecting ||
+        val isOngoing = reconnectAttempt != null ||
+            state is TunnelState.Connecting ||
             state is TunnelState.Connected ||
             state is TunnelState.Disconnecting
 
@@ -67,23 +76,43 @@ class VpnNotificationFactory @Inject constructor(
             PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(tunnelName)
             .setContentText(contentText)
             .setSmallIcon(R.drawable.ic_notification_vpn)
             .setOngoing(isOngoing)
             .setOnlyAlertOnce(true)
             .setContentIntent(contentIntent)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+
+        if (state is TunnelState.Connected) {
+            // Connection-duration timer, shown both in the shade and in the status-bar chip.
+            builder.setWhen(state.sinceEpochMillis).setShowWhen(true).setUsesChronometer(true)
+        }
+        if (disconnectIntent != null && isOngoing) {
+            builder.addAction(0, context.getString(R.string.notification_action_disconnect), disconnectIntent)
+        }
+        if (isOngoing) {
+            // Android 16 "Live Updates": promotes the notification to a status-bar chip (the
+            // "island" on Pixel, HyperOS and other skins that map Live Updates onto their own).
+            // Ignored on older versions and when the user turns Live Updates off for the app.
+            builder.setRequestPromotedOngoing(true)
+            builder.setShortCriticalText(chipText(tunnelName))
+        }
+        return builder.build()
     }
 
+    /** A leading flag emoji (e.g. "🇫🇮 Finland #1" -> "🇫🇮 Finland") keeps the chip short but recognizable. */
+    private fun chipText(tunnelName: String): String = tunnelName.substringBefore('#').trim().ifEmpty { tunnelName }
+
     private fun formatRate(bytesPerSec: Long): String {
+        val units = context.resources.getStringArray(R.array.rate_units)
         val bps = bytesPerSec.coerceAtLeast(0)
         return when {
-            bps < 1024 -> "$bps B/s"
-            bps < 1024 * 1024 -> String.format(Locale.US, "%.0f KB/s", bps / 1024.0)
-            else -> String.format(Locale.US, "%.1f MB/s", bps / (1024.0 * 1024.0))
+            bps < 1024 -> "$bps ${units[0]}"
+            bps < 1024 * 1024 -> String.format(Locale.getDefault(), "%.0f %s", bps / 1024.0, units[1])
+            else -> String.format(Locale.getDefault(), "%.1f %s", bps / (1024.0 * 1024.0), units[2])
         }
     }
 

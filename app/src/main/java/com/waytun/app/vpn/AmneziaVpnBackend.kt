@@ -2,6 +2,7 @@ package com.waytun.app.vpn
 
 import android.content.Context
 import com.waytun.app.R
+import com.waytun.app.core.obfuscation.AwgConfigObfuscator
 import com.waytun.app.core.parser.TunnelConfigParser
 import com.waytun.app.core.parser.TunnelParseResult
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,7 +38,10 @@ class AmneziaVpnBackend @Inject constructor(
 
     override suspend fun start(tunnel: ActiveTunnel): Result<Unit> = withContext(Dispatchers.IO) {
         _state.value = TunnelState.Connecting
-        when (val parsed = TunnelConfigParser.parse(tunnel.rawConfigText)) {
+        val configText = tunnel.obfuscation
+            ?.let { AwgConfigObfuscator.apply(tunnel.rawConfigText, it) }
+            ?: tunnel.rawConfigText
+        when (val parsed = TunnelConfigParser.parse(configText)) {
             is TunnelParseResult.AmneziaSuccess -> {
                 try {
                     val handle = BackendTunnelHandle(TUNNEL_INTERFACE_NAME, ::onBackendStateChanged)

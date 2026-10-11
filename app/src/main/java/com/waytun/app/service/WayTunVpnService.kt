@@ -1,160 +1,57 @@
 package com.waytun.app.service
 
-import android.app.NotificationManager
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import com.waytun.app.R
+import android.os.IBinder
 import com.waytun.app.data.tunnel.TunnelRepository
-import com.waytun.app.notification.TrafficRate
 import com.waytun.app.notification.VpnNotificationFactory
-import com.waytun.app.vpn.ActiveTunnel
-import com.waytun.app.vpn.TunnelState
-import com.waytun.app.vpn.TunnelStats
-import com.waytun.app.vpn.VpnBackend
-import com.waytun.app.vpn.WireGuardBackend
+import com.waytun.app.vpn.WireGuardVpnBackend
+import com.waytun.app.vpn.remote.ACTION_OBSERVE_STATE
 import com.wireguard.android.backend.GoBackend
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-
-private const val STATS_POLL_INTERVAL_MS = 1_500L
 
 /**
- * The single VPN service component. GoBackend hardcodes a reference to its own nested
- * [GoBackend.VpnService] class when it needs to start one itself; by subclassing it and always
- * starting *this* class ourselves first (see TunnelListViewModel), GoBackend finds its internal
- * "is a VpnService already running" future already completed and never tries to start the base
- * class directly (which isn't declared in the manifest).
+ * The WireGuard VPN service, running in its own `:wireguard` process. GoBackend hardcodes a
+ * reference to its own nested [GoBackend.VpnService] class when it needs to start one itself; by
+ * subclassing it and always starting *this* class ourselves first (see VpnServiceRouting),
+ * GoBackend finds its internal "is a VpnService already running" future already completed and
+ * never tries to start the base class directly (which isn't declared in the manifest).
  */
 @AndroidEntryPoint
 class WayTunVpnService : GoBackend.VpnService() {
 
-    @Inject
-    @WireGuardBackend
-    lateinit var vpnBackend: VpnBackend
-
+    @Inject lateinit var vpnBackend: WireGuardVpnBackend
     @Inject lateinit var tunnelRepository: TunnelRepository
     @Inject lateinit var notificationFactory: VpnNotificationFactory
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var activeTunnelName: String = ""
-    private var currentState: TunnelState = TunnelState.Disconnected
-    private var statsJob: Job? = null
+    private lateinit var runtime: VpnServiceRuntime
+
+    override fun onBind(intent: Intent?): IBinder? =
+        if (intent?.action == ACTION_OBSERVE_STATE) runtime.binder else super.onBind(intent)
 
     override fun onCreate() {
         super.onCreate()
-        notificationFactory.ensureChannel()
-        startForeground(
-            VpnNotificationFactory.NOTIFICATION_ID,
-            notificationFactory.build(getString(R.string.app_name), TunnelState.Connecting),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
-        )
-        // Skip the state already present when we subscribe (e.g. a stale Disconnected left over
-        // from a previous run) - only react to transitions that happen from this point on.
-        vpnBackend.state.drop(1).onEach { state ->
-            currentState = state
-            updateNotification(state)
-            if (state is TunnelState.Connected) {
-                startStatsPolling()
-            } else {
-                stopStatsPolling()
-            }
-            if (state is TunnelState.Disconnected) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-            }
-        }.launchIn(serviceScope)
+        runtime = VpnServiceRuntime(this, vpnBackend, tunnelRepository, notificationFactory, ACTION_CONNECT, ACTION_DISCONNECT)
+        runtime.onCreate()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_CONNECT -> {
-                val tunnelId = intent.getStringExtra(EXTRA_TUNNEL_ID)
-                activeTunnelName = intent.getStringExtra(EXTRA_TUNNEL_NAME).orEmpty()
-                if (tunnelId != null) connect(tunnelId)
-            }
-            ACTION_DISCONNECT -> disconnect()
-        }
+        runtime.onStartCommand(intent)
         return super.onStartCommand(intent, flags, startId)
     }
 
-    private fun connect(tunnelId: String) {
-        serviceScope.launch {
-            val rawConfig = tunnelRepository.getDecryptedConfigText(tunnelId).getOrNull()
-            if (rawConfig == null) {
-                updateNotification(TunnelState.Error(getString(R.string.vpn_error_unknown)))
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-                return@launch
-            }
-            vpnBackend.start(ActiveTunnel(tunnelId, activeTunnelName, rawConfig))
-        }
-    }
-
-    private fun disconnect() {
-        serviceScope.launch { vpnBackend.stop() }
-    }
-
-    private fun updateNotification(state: TunnelState, trafficRate: TrafficRate? = null) {
-        val title = activeTunnelName.ifEmpty { getString(R.string.app_name) }
-        val notification = notificationFactory.build(title, state, trafficRate)
-        getSystemService(NotificationManager::class.java)
-            ?.notify(VpnNotificationFactory.NOTIFICATION_ID, notification)
-    }
-
-    private fun startStatsPolling() {
-        if (statsJob?.isActive == true) return
-        statsJob = serviceScope.launch {
-            var previous: TunnelStats? = null
-            var previousAtMillis = System.currentTimeMillis()
-            while (isActive) {
-                delay(STATS_POLL_INTERVAL_MS)
-                val stats = vpnBackend.stats()
-                val nowMillis = System.currentTimeMillis()
-                val prev = previous
-                if (stats != null && prev != null) {
-                    val elapsedSeconds = (nowMillis - previousAtMillis) / 1000.0
-                    if (elapsedSeconds > 0) {
-                        val down = ((stats.rxBytes - prev.rxBytes) / elapsedSeconds).toLong().coerceAtLeast(0)
-                        val up = ((stats.txBytes - prev.txBytes) / elapsedSeconds).toLong().coerceAtLeast(0)
-                        updateNotification(currentState, TrafficRate(down, up))
-                    }
-                }
-                previous = stats
-                previousAtMillis = nowMillis
-            }
-        }
-    }
-
-    private fun stopStatsPolling() {
-        statsJob?.cancel()
-        statsJob = null
-    }
-
     override fun onRevoke() {
-        serviceScope.launch { vpnBackend.stop() }
+        runtime.onRevoke()
         super.onRevoke()
     }
 
     override fun onDestroy() {
-        serviceScope.cancel()
+        runtime.onDestroy()
         super.onDestroy()
     }
 
     companion object {
         const val ACTION_CONNECT = "com.waytun.app.action.CONNECT"
         const val ACTION_DISCONNECT = "com.waytun.app.action.DISCONNECT"
-        const val EXTRA_TUNNEL_ID = "extra_tunnel_id"
-        const val EXTRA_TUNNEL_NAME = "extra_tunnel_name"
     }
 }

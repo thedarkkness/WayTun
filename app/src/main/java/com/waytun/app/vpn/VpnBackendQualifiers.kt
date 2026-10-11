@@ -9,3 +9,7 @@ annotation class WireGuardBackend
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class AmneziaBackend
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class XrayBackend

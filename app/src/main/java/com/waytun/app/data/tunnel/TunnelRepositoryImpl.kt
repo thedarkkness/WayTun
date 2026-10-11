@@ -2,6 +2,7 @@ package com.waytun.app.data.tunnel
 
 import com.waytun.app.core.crypto.ConfigCipher
 import com.waytun.app.core.crypto.EncryptedConfig
+import com.waytun.app.core.parser.TunnelDescriptor
 import com.waytun.app.core.parser.TunnelProtocol
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -23,7 +24,9 @@ class TunnelRepositoryImpl @Inject constructor(
                     id = entity.id,
                     name = entity.name,
                     protocol = TunnelProtocol.valueOf(entity.protocol),
-                    createdAtEpochMillis = entity.createdAtEpochMillis
+                    createdAtEpochMillis = entity.createdAtEpochMillis,
+                    subscriptionId = entity.subscriptionId,
+                    details = entity.details
                 )
             }
         }
@@ -44,7 +47,8 @@ class TunnelRepositoryImpl @Inject constructor(
                     sortOrder = dao.count(),
                     createdAtEpochMillis = System.currentTimeMillis(),
                     encryptedConfig = encrypted.ciphertext,
-                    configIv = encrypted.iv
+                    configIv = encrypted.iv,
+                    details = TunnelDescriptor.describe(rawConfigText)
                 )
             )
             id
@@ -82,7 +86,7 @@ class TunnelRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val encrypted = cipher.encrypt(rawConfigText.toByteArray(StandardCharsets.UTF_8))
-            dao.update(id, name, protocol.name, encrypted.ciphertext, encrypted.iv)
+            dao.update(id, name, protocol.name, encrypted.ciphertext, encrypted.iv, TunnelDescriptor.describe(rawConfigText))
         }
     }
 
@@ -90,4 +94,14 @@ class TunnelRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching { dao.deleteById(id) }
         }
+
+    override suspend fun backfillDetails() = withContext(Dispatchers.IO) {
+        dao.getWithoutDetails().forEach { entity ->
+            runCatching {
+                val raw = String(cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv)), StandardCharsets.UTF_8)
+                // Empty string (not null) for configs that don't parse, so they aren't retried forever.
+                dao.updateDetails(entity.id, TunnelDescriptor.describe(raw) ?: "")
+            }
+        }
+    }
 }

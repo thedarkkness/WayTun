@@ -24,9 +24,24 @@ interface TunnelDao {
     @Query("DELETE FROM tunnels WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    @Query("SELECT * FROM tunnels WHERE subscriptionId = :subscriptionId")
+    suspend fun getBySubscription(subscriptionId: String): List<TunnelEntity>
+
+    @Query("UPDATE tunnels SET name = :name, sortOrder = :sortOrder WHERE id = :id")
+    suspend fun updateNameAndOrder(id: String, name: String, sortOrder: Int)
+
+    @Query("UPDATE tunnels SET details = :details WHERE id = :id")
+    suspend fun updateDetails(id: String, details: String?)
+
+    @Query("SELECT * FROM tunnels WHERE details IS NULL")
+    suspend fun getWithoutDetails(): List<TunnelEntity>
+
+    @Query("DELETE FROM tunnels WHERE subscriptionId = :subscriptionId")
+    suspend fun deleteBySubscription(subscriptionId: String)
+
     @Query(
         "UPDATE tunnels SET name = :name, protocol = :protocol, encryptedConfig = :encryptedConfig, " +
-            "configIv = :configIv WHERE id = :id"
+            "configIv = :configIv, details = :details WHERE id = :id"
     )
-    suspend fun update(id: String, name: String, protocol: String, encryptedConfig: ByteArray, configIv: ByteArray)
+    suspend fun update(id: String, name: String, protocol: String, encryptedConfig: ByteArray, configIv: ByteArray, details: String?)
 }

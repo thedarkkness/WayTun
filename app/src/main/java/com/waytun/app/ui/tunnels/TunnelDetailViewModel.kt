@@ -11,13 +11,14 @@ import com.waytun.app.core.parser.TunnelConfigParser
 import com.waytun.app.core.parser.TunnelParseResult
 import com.waytun.app.core.parser.TunnelProtocol
 import com.waytun.app.data.tunnel.TunnelRepository
-import com.waytun.app.vpn.AmneziaBackend
-import com.waytun.app.vpn.VpnBackend
-import com.waytun.app.vpn.WireGuardBackend
+import com.waytun.app.vpn.VpnBackends
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.waytun.app.ui.components.prettyJson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,11 +31,13 @@ data class TunnelDetailUiState(
     val name: String = "",
     val protocol: TunnelProtocol? = null,
     val configText: String = "",
+    /** For a JSON config: the pretty-printed lines, ready before the screen draws. */
+    val jsonLines: List<String> = emptyList(),
     val loadFailed: Boolean = false
 )
 
 sealed interface TunnelDetailEvent {
-    data class Message(val text: String) : TunnelDetailEvent
+    data class Message(val text: String, val isError: Boolean = false) : TunnelDetailEvent
     data object Saved : TunnelDetailEvent
     data object Deleted : TunnelDetailEvent
 }
@@ -43,8 +46,7 @@ sealed interface TunnelDetailEvent {
 class TunnelDetailViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tunnelRepository: TunnelRepository,
-    @param:WireGuardBackend private val wireGuardBackend: VpnBackend,
-    @param:AmneziaBackend private val amneziaBackend: VpnBackend,
+    private val backends: VpnBackends,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -60,11 +62,15 @@ class TunnelDetailViewModel @Inject constructor(
         viewModelScope.launch {
             tunnelRepository.getTunnel(tunnelId)
                 .onSuccess { details ->
+                    val lines = if (details.rawConfigText.trimStart().startsWith("{")) {
+                        withContext(Dispatchers.Default) { prettyJson(details.rawConfigText).lines() }
+                    } else emptyList()
                     _uiState.value = TunnelDetailUiState(
                         isLoading = false,
                         name = details.name,
                         protocol = details.protocol,
-                        configText = details.rawConfigText
+                        configText = details.rawConfigText,
+                        jsonLines = lines
                     )
                 }
                 .onFailure {
@@ -87,21 +93,19 @@ class TunnelDetailViewModel @Inject constructor(
         when (val result = TunnelConfigParser.parse(state.configText)) {
             is TunnelParseResult.WireGuardSuccess -> persist(name, TunnelProtocol.WIREGUARD, state.configText)
             is TunnelParseResult.AmneziaSuccess -> persist(name, TunnelProtocol.AMNEZIA_WG, state.configText)
-            is TunnelParseResult.Invalid -> sendMessage(describeInvalid(result.error))
+            is TunnelParseResult.SingBoxSuccess -> persist(name, result.link.protocol, state.configText)
+            is TunnelParseResult.Invalid -> sendError(describeInvalid(result.error))
             is TunnelParseResult.SyntaxError ->
-                sendMessage(context.getString(R.string.import_error_structure, result.detail))
+                sendError(context.getString(R.string.import_error_structure, result.detail))
         }
     }
 
     fun onDelete() {
-        val protocol = _uiState.value.protocol
-        if (protocol != null) {
-            sendDisconnectIfActive(context, backendFor(protocol), protocol, tunnelId)
-        }
+        backends.engineHolding(tunnelId)?.let { sendDisconnect(context, it) }
         viewModelScope.launch {
             tunnelRepository.deleteTunnel(tunnelId)
                 .onSuccess { events.send(TunnelDetailEvent.Deleted) }
-                .onFailure { sendMessage(it.message ?: context.getString(R.string.vpn_error_unknown)) }
+                .onFailure { sendError(it.message ?: context.getString(R.string.vpn_error_unknown)) }
         }
     }
 
@@ -109,12 +113,13 @@ class TunnelDetailViewModel @Inject constructor(
         viewModelScope.launch {
             tunnelRepository.updateTunnel(tunnelId, name, protocol, rawText)
                 .onSuccess { events.send(TunnelDetailEvent.Saved) }
-                .onFailure { sendMessage(it.message ?: context.getString(R.string.vpn_error_unknown)) }
+                .onFailure { sendError(it.message ?: context.getString(R.string.vpn_error_unknown)) }
         }
     }
 
-    private fun backendFor(protocol: TunnelProtocol): VpnBackend =
-        if (protocol == TunnelProtocol.WIREGUARD) wireGuardBackend else amneziaBackend
+    private fun sendError(text: String) {
+        viewModelScope.launch { events.send(TunnelDetailEvent.Message(text, isError = true)) }
+    }
 
     private fun sendMessage(text: String) {
         viewModelScope.launch { events.send(TunnelDetailEvent.Message(text)) }

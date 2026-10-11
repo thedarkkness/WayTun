@@ -6,7 +6,8 @@ import androidx.room.PrimaryKey
 /**
  * Persisted tunnel metadata. [encryptedConfig] is the AES-GCM ciphertext of the original .conf
  * text (private keys included); it is unreadable without the Keystore key, so storing it in Room
- * never exposes key material in the clear.
+ * never exposes key material in the clear. [subscriptionId] is set for tunnels that came from a
+ * subscription and get replaced when it's refreshed.
  */
 @Entity(tableName = "tunnels")
 data class TunnelEntity(
@@ -16,7 +17,9 @@ data class TunnelEntity(
     val sortOrder: Int,
     val createdAtEpochMillis: Long,
     val encryptedConfig: ByteArray,
-    val configIv: ByteArray
+    val configIv: ByteArray,
+    val subscriptionId: String? = null,
+    val details: String? = null
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -27,7 +30,9 @@ data class TunnelEntity(
             sortOrder == other.sortOrder &&
             createdAtEpochMillis == other.createdAtEpochMillis &&
             encryptedConfig.contentEquals(other.encryptedConfig) &&
-            configIv.contentEquals(other.configIv)
+            configIv.contentEquals(other.configIv) &&
+            subscriptionId == other.subscriptionId &&
+            details == other.details
     }
 
     override fun hashCode(): Int {
@@ -38,6 +43,7 @@ data class TunnelEntity(
         result = 31 * result + createdAtEpochMillis.hashCode()
         result = 31 * result + encryptedConfig.contentHashCode()
         result = 31 * result + configIv.contentHashCode()
+        result = 31 * result + (subscriptionId?.hashCode() ?: 0)
         return result
     }
 }

@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
+    <!-- Cleartext is allowed at the platform level only so that plain-http:// subscriptions can be
+         fetched after the user explicitly confirms the insecure-connection warning
+         (TunnelListViewModel.onAddSubscription). Everything else the app requests is https://. -->
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

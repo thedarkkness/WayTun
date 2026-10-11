@@ -1,7 +1,20 @@
 package com.waytun.app
 
 import android.app.Application
+import com.waytun.app.core.obfuscation.ObfuscationManager
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
-class WayTunApplication : Application()
+class WayTunApplication : Application() {
+
+    @Inject lateinit var obfuscationManager: ObfuscationManager
+
+    override fun onCreate() {
+        super.onCreate()
+        com.waytun.app.core.log.AppLog.init(this)
+        // Each VPN service runs in its own process and creates its own Application; only the UI
+        // process owns the periodic obfuscation rotation.
+        if (Application.getProcessName() == packageName) obfuscationManager.start()
+    }
+}

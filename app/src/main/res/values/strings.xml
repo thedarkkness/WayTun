@@ -55,9 +55,19 @@
     <string name="action_settings">Settings</string>
     <string name="settings_title">Settings</string>
     <string name="settings_app_version">Version %1$s</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_section_updates">Updates</string>
+    <string name="settings_build_release">Release</string>
+    <string name="settings_build_beta">Beta</string>
+    <string name="settings_android_version">Android %1$s</string>
+    <string name="settings_developer">Developer</string>
+    <string name="settings_developer_value">GitHub: thedarkkness</string>
+    <string name="settings_language_ru" translatable="false">Русский</string>
+    <string name="settings_language_en" translatable="false">English</string>
     <string name="settings_check_updates">Check for updates</string>
     <string name="update_checking">Checking…</string>
-    <string name="update_up_to_date">You already have the latest version</string>
+    <string name="update_up_to_date">Up to date</string>
     <string name="update_available_title">Update available: %1$s</string>
     <string name="update_download_install">Download &amp; install</string>
     <string name="update_downloading">Downloading… %1$d%%</string>
@@ -72,8 +82,16 @@
     <string name="detail_load_failed">Couldn\'t open this tunnel</string>
     <string name="action_back">Back</string>
 
-    <string name="action_import_file">Import from file</string>
+    <string name="action_import_file">Import .conf file</string>
     <string name="action_scan_qr">Scan QR code</string>
+    <string name="action_paste_clipboard">Paste from clipboard</string>
+    <string name="import_error_clipboard_empty">Clipboard is empty</string>
+    <string name="import_error_nothing_recognized">No supported configuration found</string>
+    <string name="import_bulk_success">Imported connections: %1$d</string>
+    <string name="import_bulk_partial">Imported: %1$d, skipped as unsupported: %2$d</string>
+    <string name="subscription_loading">Loading subscription…</string>
+    <string name="subscription_error">Couldn\'t load the subscription: %1$s</string>
+    <string name="subscription_empty">The subscription has no supported connections</string>
     <string name="action_show_qr">Show QR code</string>
     <string name="action_receive_via_network">Receive from another device (QR)</string>
     <string name="qr_too_large">This configuration is too large to fit in a QR code</string>
@@ -88,4 +106,183 @@
     <string name="pairing_send_success">Tunnel sent</string>
     <string name="pairing_send_failed">Couldn\'t send the tunnel: %1$s</string>
     <string name="pairing_default_name">w-peer</string>
+    <string name="notification_action_disconnect">Disconnect</string>
+    <string name="action_add_subscription">Add subscription</string>
+    <string name="subscription_url_label">Subscription URL</string>
+    <string name="subscription_url_invalid">Enter a link starting with http:// or https://</string>
+    <string name="subscription_usage">%1$s of %2$s</string>
+    <string name="subscription_usage_unlimited">%1$s used</string>
+    <string name="subscription_expires">until %1$s</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="delete_subscription_title">Delete subscription?</string>
+    <string name="delete_subscription_message">"%1$s" and all of its connections will be removed.</string>
+    <string name="settings_hwid">Device ID (HWID)</string>
+    <string name="settings_hwid_copied">HWID copied</string>
+    <string-array name="byte_units">
+        <item>B</item>
+        <item>KB</item>
+        <item>MB</item>
+        <item>GB</item>
+        <item>TB</item>
+    </string-array>
+    <string-array name="rate_units">
+        <item>B/s</item>
+        <item>KB/s</item>
+        <item>MB/s</item>
+    </string-array>
+    <string name="subscription_insecure_title">Insecure subscription</string>
+    <string name="subscription_insecure_message">This link uses http:// without encryption: the subscription and the connection keys in it can be intercepted or replaced along the way.\n\nImport the subscription?</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
+    <string name="vpn_status_reconnecting">Reconnecting… (attempt %1$d)</string>
+
+    <!-- Main screen -->
+    <string name="hero_status_idle">Not connected</string>
+    <string name="hero_status_connecting">Connecting…</string>
+    <string name="hero_status_connected">Protected</string>
+    <string name="hero_status_error">Connection failed</string>
+    <string name="hero_no_tunnel">Pick a connection</string>
+    <string name="hero_obfuscation_on">Obfuscation on</string>
+    <string name="hero_obfuscation_off">Obfuscation off</string>
+    <string name="tunnel_ping_ms">%1$d ms</string>
+    <string name="tunnel_active">Active</string>
+    <string name="action_details">Details</string>
+    <string name="action_ping_all">Check latency</string>
+    <string name="empty_title">Nothing here yet</string>
+    <string name="empty_hint">Add a subscription link or paste a key from the clipboard — supported: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, AmneziaWG.</string>
+    <string name="subscription_connections">%1$d connections</string>
+    <string name="subscription_updated">Updated %1$s</string>
+    <string name="subscription_auto_update">Auto · %1$d h</string>
+    <string name="subscription_days_left">%1$d d left</string>
+    <string name="subscription_expired">Expired</string>
+    <string name="subscription_support">Support</string>
+    <string name="subscription_website">Website</string>
+    <string name="subscription_rename">Rename</string>
+    <string name="subscription_copy_link">Copy link</string>
+    <string name="subscription_link_copied">Link copied</string>
+
+    <!-- Obfuscation settings -->
+    <string name="settings_section_obfuscation">Auto-obfuscation</string>
+    <string name="obf_intro">A client-side shell around every protocol (VLESS, VMess, Trojan, Shadowsocks, Hysteria2, WireGuard, AmneziaWG). Its values are regenerated automatically, so traffic doesn\'t keep one recognizable pattern. Nothing has to be changed on the server.</string>
+    <string name="obf_enable">Enable obfuscation</string>
+    <string name="obf_level">Masking level</string>
+    <string name="obf_level_light">Light</string>
+    <string name="obf_level_medium">Medium</string>
+    <string name="obf_level_strong">Strong</string>
+    <string name="obf_methods">Methods</string>
+    <string name="obf_tls_fragmentation">TLS split</string>
+    <string name="obf_tls_fragmentation_desc">Cuts the handshake into pieces so DPI can\'t read the site name (not used for REALITY)</string>
+    <string name="obf_fingerprint">Browser fingerprint</string>
+    <string name="obf_fingerprint_desc">Poses as Chrome, Firefox, Safari… — a different one each time</string>
+    <string name="obf_quic">QUIC packet size</string>
+    <string name="obf_quic_desc">Random first-packet size for Hysteria2 and TUIC</string>
+    <string name="obf_headers">HTTP headers</string>
+    <string name="obf_headers_desc">Rotates User-Agent for WebSocket / HTTP transports</string>
+    <string name="obf_wg_junk">WireGuard junk packets</string>
+    <string name="obf_wg_junk_desc">AmneziaWG-style decoys before the handshake — works for plain WireGuard too</string>
+    <string name="obf_schedule">Auto-update</string>
+    <string name="obf_auto_rotate">New values every 10 min</string>
+    <string name="obf_auto_rotate_desc">Used by every new connection and every reconnect</string>
+    <string name="obf_auto_reconnect">Reconnect on failure</string>
+    <string name="obf_auto_reconnect_desc">If the tunnel drops or goes silent, reconnect right away with fresh values</string>
+    <string name="obf_apply_live">Apply new values immediately</string>
+    <string name="obf_apply_live_desc">Reconnects every 10 min, briefly interrupting connections</string>
+    <string name="obf_current">Current values</string>
+    <string name="obf_generated">Generated %1$s</string>
+    <string name="obf_regenerate">Regenerate now</string>
+    <string name="obf_value_fragment">Split: %1$s</string>
+    <string name="obf_value_fingerprint">Fingerprint: %1$s</string>
+    <string name="obf_value_quic">QUIC packet: %1$d B</string>
+    <string name="obf_value_junk">Junk: %1$d × %2$d–%3$d B</string>
+    <string name="obf_value_delay">%1$d ms</string>
+    <string name="obf_value_on">on</string>
+    <string name="obf_value_off">off</string>
+
+    <string name="action_ping">Check latency</string>
+    <string name="subscription_send_to_tv">Send to TV</string>
+    <string name="subscription_description">DESCRIPTION</string>
+    <string name="subscription_email">Email</string>
+    <string name="pairing_whole_subscription">Whole subscription</string>
+
+    <string name="pairing_receive_title">Add from your phone</string>
+    <string name="pairing_step_1">Connect your phone to the same Wi-Fi as this device</string>
+    <string name="pairing_step_2">In WayTun on the phone, open the subscription\'s ⋮ menu → “Send to TV”</string>
+    <string name="pairing_step_3">Point the phone\'s camera at this code</string>
+    <string name="pairing_retry">Show code again</string>
+    <string name="pairing_waiting_phone">Waiting for your phone…</string>
+    <string name="settings_os_label">Operating system</string>
+    <string name="settings_section_network">Network</string>
+    <string name="net_block_quic">Block QUIC (UDP 443)</string>
+    <string name="net_block_quic_desc">YouTube and browsers switch to regular HTTPS, which is much smoother through Hysteria2. Turn off only if a site needs HTTP/3.</string>
+    <string name="speed_check">Check speed</string>
+    <string name="speed_running">Measuring…</string>
+    <string name="speed_failed">No data · tap to retry</string>
+    <string name="speed_result">%1$d Mbit/s · %2$d ms</string>
+    <string name="action_scroll_top">Back to top</string>
+    <string name="obf_level_light_desc">Gentle: smallest delays, enough for most networks. Recommended.</string>
+    <string name="obf_level_medium_desc">Balanced: more variation, slightly longer connection setup.</string>
+    <string name="obf_level_strong_desc">Maximum: the most random values, for aggressive filtering.</string>
+    <string name="detail_json_title">JSON data</string>
+    <string name="detail_json_hint">The full configuration from the subscription, exactly as it was delivered. Press and hold to select and copy.</string>
+    <string name="subscription_updated_ok">Subscription updated successfully</string>
+    <string name="action_copy">Copy</string>
+    <string name="config_copied">Config copied</string>
+    <string name="json_copied">JSON copied</string>
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="sub_section_update">Update</string>
+    <string name="sub_auto_update">Auto-update</string>
+    <string name="sub_interval">Interval (h)</string>
+    <string name="sub_interval_hint">The subscription refreshes when the app opens if this many hours passed since the last update (1 to 730).</string>
+    <string name="sub_update_on_open">Update on open</string>
+    <string name="sub_ping_on_open">Ping on open</string>
+    <string name="sub_on_open_hint">Update and/or ping run every time the app is opened.</string>
+    <string name="sub_section_data">Data sent</string>
+    <string name="sub_send_hwid">Send HWID</string>
+    <string name="sub_send_hwid_hint">When fetching the subscription the device sends the Android version, model and HWID; none of them contains personal data.</string>
+    <string name="sub_timeout">Request timeout</string>
+    <string name="sub_seconds">%1$d s</string>
+    <string name="sub_user_agent">User-Agent</string>
+    <string name="sub_user_agent_hint">The format of the configs may depend on it. Leave the default unless you were told to change it.</string>
+    <string name="sub_reset">Reset</string>
+    <string name="sub_section_sort">Server sort order</string>
+    <string name="sub_sort_none">No sorting</string>
+    <string name="sub_sort_ping">Sort by ping</string>
+    <string name="sub_sort_alpha">Sort alphabetically</string>
+    <string name="sub_settings_title">Subscription options</string>
+    <string name="sub_section_sync">Sync</string>
+    <string name="sub_auto">Refresh automatically</string>
+    <string name="sub_every">How often</string>
+    <string name="sub_every_panel">By subscription</string>
+    <string name="sub_hours_short">%1$d h</string>
+    <string name="sub_days_short">%1$d d</string>
+    <string name="sub_on_launch">Right at launch</string>
+    <string name="sub_on_launch_hint">Refresh every time the app opens, without waiting for the interval.</string>
+    <string name="sub_ping_launch">Measure latency at launch</string>
+    <string name="sub_section_privacy">Send HWID</string>
+    <string name="sub_device_info">Device identifier</string>
+    <string name="sub_device_info_hint">When it contacts the subscription address, your device passes the Android version and HWID. Neither contains personal data.</string>
+    <string name="sub_section_network">Network</string>
+    <string name="sub_wait">Response timeout</string>
+    <string name="sub_client_id">User-Agent</string>
+    <string name="sub_advanced">Advanced</string>
+    <string name="sub_client_id_hint">How the app introduces itself when downloading. The config format may depend on it; change it only if you were told to.</string>
+    <string name="sub_section_order">Key order</string>
+    <string name="sub_order_panel">Default</string>
+    <string name="sub_order_ping">By ping</string>
+    <string name="sub_order_alpha">A–Z</string>
+    <string name="action_subscription_settings">Options</string>
+    <string name="settings_language_auto">Auto</string>
+    <string name="sub_ua_value">Value</string>
+    <string name="sub_auto_hint">Every hour</string>
+    <string name="subscription_updating">Updating…</string>
+    <string name="settings_section_diagnostics">Diagnostics</string>
+    <string name="settings_logs_open">View logs</string>
+    <string name="logs_title">Logs</string>
+    <string name="logs_subscription">Subscriptions</string>
+    <string name="logs_connection">Connections</string>
+    <string name="logs_xray_debug">Xray (debug)</string>
+    <string name="logs_empty">The log is empty</string>
+    <string name="logs_copied">Log copied</string>
+    <string name="logs_clear">Clear</string>
 </resources>

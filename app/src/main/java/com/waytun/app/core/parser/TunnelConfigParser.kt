@@ -18,6 +18,7 @@ data class ConfigFieldError(val fieldName: String, val kind: ConfigErrorKind)
 sealed interface TunnelParseResult {
     data class WireGuardSuccess(val config: WgConfig) : TunnelParseResult
     data class AmneziaSuccess(val config: AwgConfig) : TunnelParseResult
+    data class SingBoxSuccess(val link: SingBoxLink) : TunnelParseResult
 
     /** A well-formed `key = value` config with a semantically invalid field (bad key, bad endpoint, ...). */
     data class Invalid(val error: ConfigFieldError) : TunnelParseResult
@@ -40,8 +41,17 @@ object TunnelConfigParser {
     )
     private val ATTRIBUTE_LINE = Regex("""(\w+)\s*=\s*(.+)""")
 
-    fun parse(rawText: String): TunnelParseResult =
-        if (containsAmneziaWgMarkers(rawText)) parseAmnezia(rawText) else parseWireGuard(rawText)
+    fun parse(rawText: String): TunnelParseResult {
+        if (SingBoxLinkParser.canParse(rawText)) {
+            val link = SingBoxLinkParser.parse(rawText)
+            return if (link != null) {
+                TunnelParseResult.SingBoxSuccess(link)
+            } else {
+                TunnelParseResult.SyntaxError("Malformed share link")
+            }
+        }
+        return if (containsAmneziaWgMarkers(rawText)) parseAmnezia(rawText) else parseWireGuard(rawText)
+    }
 
     private fun parseWireGuard(rawText: String): TunnelParseResult = try {
         TunnelParseResult.WireGuardSuccess(WgConfig.parse(BufferedReader(StringReader(rawText))))

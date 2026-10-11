@@ -23,3 +23,19 @@ local.properties
 *.keystore
 *.jks
 key.properties
+
+# Scratch clone of SagerNet/sing-box used only to build app/libs/libbox.aar
+# (see third_party/sing-box-build/BUILD.md)
+/third_party/sing-box/
+
+# Xray build scratch (see third_party/xray-build/BUILD.md)
+/third_party/xray-core/
+/third_party/hev-socks5-tunnel/
+/third_party/xray-build/gomobile/
+/third_party/xray-build/bin/
+/third_party/xray-build/wrapper/xraycore.aar
+/third_party/xray-build/wrapper/go.sum
+
+# Editor settings and gomobile by-products
+.vscode/
+/third_party/xray-build/wrapper/xraycore-sources.jar
