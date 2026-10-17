@@ -1,8 +1,6 @@
 package com.waytun.app.ui.theme
 
-import android.app.ActivityManager
-import android.content.Context
-import android.os.Build
+import com.waytun.app.core.prefs.KeyValueStore
 import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,30 +16,24 @@ val LocalInterfaceStyle = staticCompositionLocalOf { InterfaceStyle.GLASS }
 
 /** The user's choice, readable synchronously at startup so the first frame already has the right look. */
 object InterfaceStyleStore {
-    private const val PREFS = "interface_style"
+    /** The SharedPreferences file name on Android (kept from 1.3.2). */
+    const val STORE_NAME = "interface_style"
     private const val KEY = "style"
 
     private val _style = MutableStateFlow(InterfaceStyle.GLASS)
     val style: StateFlow<InterfaceStyle> = _style.asStateFlow()
 
-    private var prefs: android.content.SharedPreferences? = null
+    private var prefs: KeyValueStore? = null
 
-    fun init(context: Context) {
+    /** [default] applies until the user picks one; the platform knows what its devices can afford. */
+    fun init(store: KeyValueStore, default: InterfaceStyle) {
         if (prefs != null) return
-        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs = p
-        _style.value = p.getString(KEY, null)?.let { runCatching { InterfaceStyle.valueOf(it) }.getOrNull() }
-            ?: defaultFor(context)
+        prefs = store
+        _style.value = store.getString(KEY)?.let { runCatching { InterfaceStyle.valueOf(it) }.getOrNull() } ?: default
     }
 
     fun set(style: InterfaceStyle) {
         _style.value = style
-        prefs?.edit()?.putString(KEY, style.name)?.apply()
-    }
-
-    /** Until the user picks one: glass from Android 15 onward where the device can afford it; plain on low-RAM phones and on Android 10-14. */
-    private fun defaultFor(context: Context): InterfaceStyle {
-        val lowRam = context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
-        return if (lowRam || Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) InterfaceStyle.PLAIN else InterfaceStyle.GLASS
+        prefs?.edit { putString(KEY, style.name) }
     }
 }

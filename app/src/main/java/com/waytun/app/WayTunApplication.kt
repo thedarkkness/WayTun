@@ -16,8 +16,7 @@ class WayTunApplication : Application() {
         com.waytun.app.core.log.LogcatSink.install()
         super.onCreate()
         AppLog.init(this)
-        com.waytun.app.ui.theme.InterfaceStyleStore.init(this)
-        com.waytun.app.ui.theme.AppThemeStore.init(this)
+        com.waytun.app.ui.theme.initThemeStores(this)
         // Each VPN service runs in its own process and creates its own Application; only the UI
         // process owns the periodic obfuscation rotation.
         if (Application.getProcessName() == packageName) obfuscationManager.start()

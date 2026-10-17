@@ -70,6 +70,9 @@ class JSONObject() {
     internal fun entries(): Set<Map.Entry<String, Any>> = values.entries
 
     override fun toString(): String = OrgJson.stringify(this)
+
+    /** Pretty-printed like org.json's toString(indentSpaces). */
+    fun toString(indentSpaces: Int): String = OrgJson.stringify(this, indentSpaces)
 }
 
 class JSONArray() {
@@ -103,6 +106,8 @@ class JSONArray() {
     internal fun items(): List<Any> = values
 
     override fun toString(): String = OrgJson.stringify(this)
+
+    fun toString(indentSpaces: Int): String = OrgJson.stringify(this, indentSpaces)
 }
 
 internal object OrgJson {
@@ -192,9 +197,16 @@ internal object OrgJson {
         else -> null
     }
 
-    fun stringify(value: Any): String = StringBuilder().also { write(it, value) }.toString()
+    fun stringify(value: Any, indentSpaces: Int = 0): String =
+        StringBuilder().also { write(it, value, " ".repeat(indentSpaces), 0) }.toString()
 
-    private fun write(out: StringBuilder, value: Any) {
+    private fun newline(out: StringBuilder, indent: String, depth: Int) {
+        if (indent.isEmpty()) return
+        out.append('\n')
+        repeat(depth) { out.append(indent) }
+    }
+
+    private fun write(out: StringBuilder, value: Any, indent: String, depth: Int) {
         when (value) {
             is JSONObject -> {
                 out.append('{')
@@ -202,18 +214,22 @@ internal object OrgJson {
                 for ((key, item) in value.entries()) {
                     if (!first) out.append(',')
                     first = false
+                    newline(out, indent, depth + 1)
                     string(out, key)
-                    out.append(':')
-                    write(out, item)
+                    out.append(if (indent.isEmpty()) ":" else ": ")
+                    write(out, item, indent, depth + 1)
                 }
+                if (!first) newline(out, indent, depth)
                 out.append('}')
             }
             is JSONArray -> {
                 out.append('[')
                 value.items().forEachIndexed { i, item ->
                     if (i > 0) out.append(',')
-                    write(out, item)
+                    newline(out, indent, depth + 1)
+                    write(out, item, indent, depth + 1)
                 }
+                if (value.items().isNotEmpty()) newline(out, indent, depth)
                 out.append(']')
             }
             is String -> string(out, value)

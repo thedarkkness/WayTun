@@ -1,0 +1,297 @@
+<resources>
+    <string name="action_add_tunnel">Добавить туннель</string>
+    <string name="tunnel_list_empty">Нет туннелей. Нажмите «+», чтобы импортировать файл .conf или вставить конфигурацию.</string>
+
+    <string name="notification_channel_vpn_status_name">Состояние VPN</string>
+    <string name="notification_channel_vpn_status_description">Показывает статус подключения активного туннеля</string>
+
+    <string name="vpn_status_connecting">Подключение…</string>
+    <string name="vpn_status_connected">Подключено</string>
+    <string name="vpn_status_disconnecting">Отключение…</string>
+    <string name="vpn_status_disconnected">Отключено</string>
+    <string name="notification_traffic_format">%1$s · ↓ %2$s ↑ %3$s</string>
+    <string name="notification_chip_default">VPN</string>
+
+    <string name="vpn_error_unknown">Неизвестная ошибка</string>
+    <string name="vpn_error_native_code">Нативный бэкенд отклонил туннель (код %1$s)</string>
+    <string name="vpn_error_invalid_config">Не удалось запустить: сохранённая конфигурация повреждена</string>
+    <string name="vpn_error_not_authorized">Разрешение на VPN не получено</string>
+    <string name="vpn_error_unable_to_start">Не удалось запустить VPN-сервис</string>
+    <string name="vpn_error_tun_creation">Не удалось создать сетевой интерфейс VPN</string>
+    <string name="vpn_error_dns_resolution">Не удалось определить адрес сервера</string>
+    <string name="vpn_error_missing_config">Нет конфигурации для подключения</string>
+
+    <string name="import_error_field_missing">Отсутствует обязательное поле: %1$s</string>
+    <string name="import_error_field_invalid">Некорректное значение поля: %1$s</string>
+    <string name="import_error_structure">Файл конфигурации повреждён: %1$s</string>
+    <string name="import_error_generic_field">конфигурация</string>
+    <string name="config_import_success">✅ Успешный импорт</string>
+    <string name="import_default_name">Новый туннель</string>
+
+    <string name="notification_permission_rationale_title">Разрешить уведомления</string>
+    <string name="notification_permission_rationale_message">WayTun показывает статус подключения, имя туннеля и трафик в постоянном уведомлении во время соединения. Разрешите уведомления, чтобы его видеть.</string>
+    <string name="action_continue">Продолжить</string>
+    <string name="action_not_now">Не сейчас</string>
+    <string name="battery_rationale_title">Стабильное соединение</string>
+    <string name="battery_rationale_message">Некоторые телефоны усыпляют приложения в фоне ради экономии батареи, из-за чего VPN может незаметно отключиться, пока вы его не откроете снова. Исключите WayTun из оптимизации батареи, чтобы соединение держалось само.</string>
+    <string name="vpn_permission_denied">Для подключения нужно разрешение на VPN</string>
+    <string name="import_error_file_read">Не удалось прочитать выбранный файл</string>
+
+    <string name="import_preview_title">Импорт туннеля</string>
+    <string name="import_preview_name_label">Имя</string>
+    <string name="import_preview_protocol_label">Протокол</string>
+    <string name="import_preview_address_label">Адрес</string>
+    <string name="import_preview_dns_label">DNS</string>
+    <string name="import_preview_endpoint_label">Endpoint</string>
+    <string name="import_preview_allowed_ips_label">Allowed IPs</string>
+    <string name="import_preview_mtu_label">MTU</string>
+    <string name="import_preview_obfuscation_label">Обфускация</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="value_not_set">—</string>
+
+    <string name="delete_tunnel_title">Удалить туннель?</string>
+    <string name="delete_tunnel_message">«%1$s» будет удалён без возможности восстановления.</string>
+    <string name="action_delete">Удалить</string>
+
+    <string name="action_settings">Настройки</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_app_version">Версия %1$s</string>
+    <string name="settings_section_about">О приложении</string>
+    <string name="settings_section_language">Язык</string>
+    <string name="settings_section_updates">Обновления</string>
+    <string name="settings_build_release">Релиз</string>
+    <string name="settings_build_beta">Бета</string>
+    <string name="settings_android_version">Android %1$s</string>
+    <string name="settings_developer">Разработчик</string>
+    <string name="settings_developer_value" translatable="false">GitHub: thedarkkness</string>
+    <string name="settings_language_ru" translatable="false">Русский</string>
+    <string name="settings_language_en" translatable="false">English</string>
+    <string name="settings_check_updates">Проверить обновления</string>
+    <string name="update_checking">Проверка…</string>
+    <string name="update_up_to_date">Версия актуальна</string>
+    <string name="update_available_title">Доступно обновление: %1$s</string>
+    <string name="update_download_install">Скачать и установить</string>
+    <string name="update_downloading">Загрузка… %1$d%%</string>
+    <string name="update_downloading_indeterminate">Загрузка…</string>
+    <string name="update_ready_install">Установить</string>
+    <string name="update_error_no_apk_asset">В этом релизе нет файла APK</string>
+    <string name="update_error_generic">Не удалось проверить обновления: %1$s</string>
+
+    <string name="detail_label_name">Имя</string>
+    <string name="detail_label_config">Конфигурация</string>
+    <string name="detail_save_success">Сохранено</string>
+    <string name="detail_load_failed">Не удалось открыть туннель</string>
+    <string name="action_back">Назад</string>
+
+    <string name="action_import_file">Импорт .conf</string>
+    <string name="action_scan_qr">Отсканировать QR-код</string>
+    <string name="action_paste_clipboard">Вставить из буфера</string>
+    <string name="import_error_clipboard_empty">Буфер обмена пуст</string>
+    <string name="import_error_nothing_recognized">Не найдено поддерживаемых конфигураций</string>
+    <string name="import_bulk_partial">Импортировано: %1$d, пропущено неподдерживаемых: %2$d</string>
+    <string name="subscription_loading">Загрузка подписки…</string>
+    <string name="subscription_error">Не удалось загрузить подписку: %1$s</string>
+    <string name="subscription_empty">В подписке нет поддерживаемых подключений</string>
+    <string name="action_show_qr">Показать QR-код</string>
+    <string name="action_receive_via_network">Принять с другого устройства (QR)</string>
+    <string name="qr_too_large">Эта конфигурация слишком большая для QR-кода</string>
+    <string name="camera_permission_denied">Для сканирования QR-кода нужен доступ к камере</string>
+
+    <string name="pairing_waiting_for_sender">Отсканируйте этот код в WayTun на другом устройстве</string>
+    <string name="pairing_timeout">Устройство не подключилось вовремя</string>
+    <string name="pairing_no_network">Не найдено подключение к локальной сети</string>
+    <string name="pairing_error_generic">Не удалось передать</string>
+    <string name="pairing_select_tunnel_title">Выберите туннель для отправки</string>
+    <string name="pairing_sending">Отправка…</string>
+    <string name="pairing_send_success">Туннель отправлен</string>
+    <string name="pairing_send_failed">Не удалось отправить туннель: %1$s</string>
+    <string name="pairing_default_name">w-peer</string>
+    <string name="notification_action_disconnect">Отключить</string>
+    <string name="action_add_subscription">Добавить подписку</string>
+    <string name="subscription_url_label">Ссылка на подписку</string>
+    <string name="subscription_url_invalid">Введите ссылку, начинающуюся с http:// или https://</string>
+    <string name="subscription_usage">%1$s из %2$s</string>
+    <string name="subscription_usage_unlimited">%1$s · Безлимит</string>
+    <string name="subscription_expires">до %1$s</string>
+    <string name="action_refresh">Обновить</string>
+    <string name="delete_subscription_title">Удалить подписку?</string>
+    <string name="delete_subscription_message">Подписка «%1$s» и все её подключения будут удалены.</string>
+    <string name="settings_hwid">ID устройства (HWID)</string>
+    <string-array name="byte_units">
+        <item>Б</item>
+        <item>КБ</item>
+        <item>МБ</item>
+        <item>ГБ</item>
+        <item>ТБ</item>
+    </string-array>
+    <string-array name="rate_units">
+        <item>Б/с</item>
+        <item>КБ/с</item>
+        <item>МБ/с</item>
+    </string-array>
+    <string name="subscription_insecure_title">Небезопасная подписка</string>
+    <string name="subscription_insecure_message">Ссылка использует http:// без шифрования: подписку и ключи подключений в ней могут перехватить или подменить по пути.\n\nИмпортировать подписку?</string>
+    <string name="action_yes">Да</string>
+    <string name="action_no">Нет</string>
+    <string name="vpn_status_reconnecting">Переподключение… (попытка %1$d)</string>
+
+    <!-- Main screen -->
+    <string name="hero_status_idle">Не подключено</string>
+    <string name="hero_status_connecting">Подключение…</string>
+    <string name="hero_status_connected">Защищено</string>
+    <string name="hero_status_error">Не удалось подключиться</string>
+    <string name="hero_no_tunnel">Выберите подключение</string>
+    <string name="hero_obfuscation_on">Обфускация включена</string>
+    <string name="hero_obfuscation_off">Обфускация выключена</string>
+    <string name="tunnel_ping_ms">%1$d мс</string>
+    <string name="tunnel_active">Активно</string>
+    <string name="action_details">Подробности</string>
+    <string name="action_ping_all">Проверить задержку</string>
+    <string name="empty_title">Здесь пока пусто</string>
+    <string name="empty_hint">Добавьте ссылку на подписку или вставьте ключ из буфера обмена. Поддерживаются VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, AmneziaWG.</string>
+    <string name="subscription_updated">Обновлено %1$s</string>
+    <string name="ago_just_now">только что</string>
+    <string name="ago_seconds">%1$d сек. назад</string>
+    <string name="subscription_days_left">осталось %1$d дн.</string>
+    <string name="subscription_expired">Истекла</string>
+    <string name="subscription_support">Поддержка</string>
+    <string name="subscription_bot">Бот</string>
+    <string name="subscription_rename">Переименовать</string>
+    <string name="subscription_copy_link">Скопировать ссылку</string>
+    <string name="subscription_link_copied">Ссылка скопирована</string>
+
+    <!-- Obfuscation settings -->
+    <string name="settings_section_obfuscation">Автообфускация</string>
+    <string name="obf_intro">Клиентская «оболочка» вокруг любого протокола (VLESS, VMess, Trojan, Shadowsocks, Hysteria2, WireGuard, AmneziaWG). Её параметры обновляются сами, поэтому у трафика нет постоянного узнаваемого рисунка. На сервере ничего менять не нужно.</string>
+    <string name="obf_enable">Включить обфускацию</string>
+    <string name="obf_level">Уровень маскировки</string>
+    <string name="obf_level_light">Лёгкая</string>
+    <string name="obf_level_medium">Средняя</string>
+    <string name="obf_level_strong">Сильная</string>
+    <string name="obf_methods">Методы</string>
+    <string name="obf_tls_fragmentation">Дробление TLS</string>
+    <string name="obf_tls_fragmentation_desc">Режет рукопожатие на части, чтобы DPI не прочитал имя сайта (для REALITY не применяется)</string>
+    <string name="obf_fingerprint">Отпечаток браузера</string>
+    <string name="obf_fingerprint_desc">Выдаёт себя за Chrome, Firefox, Safari… — каждый раз за другой</string>
+    <string name="obf_quic">Размер пакетов QUIC</string>
+    <string name="obf_quic_desc">Случайный размер первого пакета для Hysteria2 и TUIC</string>
+    <string name="obf_headers">HTTP-заголовки</string>
+    <string name="obf_headers_desc">Меняет User-Agent у транспортов WebSocket / HTTP</string>
+    <string name="obf_wg_junk">Мусорные пакеты WireGuard</string>
+    <string name="obf_wg_junk_desc">Ложные пакеты в стиле AmneziaWG перед рукопожатием — работает и для обычного WireGuard</string>
+    <string name="obf_schedule">Автообновление</string>
+    <string name="obf_auto_rotate">Новые значения каждые 10 мин</string>
+    <string name="obf_auto_rotate_desc">Их получает каждое новое подключение и каждое переподключение</string>
+    <string name="obf_auto_reconnect">Переподключение при сбое</string>
+    <string name="obf_auto_reconnect_desc">Если туннель оборвался или замолчал, сразу переподключаемся с новыми значениями</string>
+    <string name="obf_apply_live">Применять новые значения сразу</string>
+    <string name="obf_apply_live_desc">Переподключение каждые 10 мин, соединения на миг прервутся</string>
+    <string name="obf_current">Текущие значения</string>
+    <string name="obf_generated">Создано %1$s</string>
+    <string name="obf_regenerate">Сгенерировать сейчас</string>
+    <string name="obf_value_fragment">Дробление: %1$s</string>
+    <string name="obf_value_fingerprint">Отпечаток: %1$s</string>
+    <string name="obf_value_quic">Пакет QUIC: %1$d Б</string>
+    <string name="obf_value_junk">Мусор: %1$d × %2$d–%3$d Б</string>
+    <string name="obf_value_delay">%1$d мс</string>
+    <string name="obf_value_on">вкл</string>
+    <string name="obf_value_off">выкл</string>
+
+    <string name="action_ping">Проверить задержку</string>
+    <string name="subscription_send_to_tv">Отправить на ТВ</string>
+    <string name="subscription_description">ОПИСАНИЕ</string>
+    <string name="subscription_email">Почта</string>
+    <string name="pairing_whole_subscription">Вся подписка</string>
+
+    <string name="pairing_receive_title">Добавить с телефона</string>
+    <string name="pairing_step_1">Подключите телефон к той же сети Wi-Fi, что и это устройство</string>
+    <string name="pairing_step_2">В WayTun на телефоне откройте меню подписки ⋮ → «Отправить на ТВ»</string>
+    <string name="pairing_step_3">Наведите камеру телефона на этот код</string>
+    <string name="pairing_retry">Показать код заново</string>
+    <string name="pairing_waiting_phone">Ожидаем телефон…</string>
+    <string name="settings_os_label">Операционная система</string>
+    <string name="settings_section_network">Сеть</string>
+    <string name="net_block_quic">Блокировать QUIC (UDP 443)</string>
+    <string name="net_block_quic_desc">YouTube и браузеры перейдут на обычный HTTPS — через Hysteria2 так заметно плавнее. Выключайте, только если сайту нужен HTTP/3.</string>
+    <string name="speed_check">Проверить скорость</string>
+    <string name="speed_running">Измеряем…</string>
+    <string name="speed_failed">Нет данных · ещё раз</string>
+    <string name="speed_result">%1$d Мбит/с · отклик %2$d мс</string>
+    <string name="action_scroll_top">Наверх</string>
+    <string name="obf_level_light_desc">Мягкая: минимум задержек, подходит для большинства сетей. Рекомендуется.</string>
+    <string name="obf_level_medium_desc">Сбалансированная: больше разнообразия, подключение чуть дольше.</string>
+    <string name="obf_level_strong_desc">Максимальная: самые случайные значения, для жёсткой фильтрации.</string>
+    <string name="detail_json_title">Данные JSON</string>
+    <string name="detail_json_hint">Полная конфигурация из подписки в том виде, в котором она была получена. Удерживайте текст, чтобы выделить и скопировать.</string>
+    <string name="subscription_updated_ok">Подписка успешно обновлена</string>
+    <string name="subscription_import_success">✅ Подписка успешно импортирована</string>
+    <string name="action_copy">Копировать</string>
+    <string name="config_copied">Конфиг скопирован</string>
+    <string name="json_copied">JSON скопирован</string>
+    <string name="action_pin">Закрепить</string>
+    <string name="action_unpin">Открепить</string>
+    <string name="sub_section_update">Обновление</string>
+    <string name="sub_auto_update">Автообновление</string>
+    <string name="sub_interval">Интервал (ч)</string>
+    <string name="sub_interval_hint">Подписка обновляется при открытии приложения, если с прошлого обновления прошло столько часов (от 1 до 730).</string>
+    <string name="sub_update_on_open">Обновлять при открытии</string>
+    <string name="sub_ping_on_open">Пинговать при открытии</string>
+    <string name="sub_on_open_hint">Обновление и/или проверка пинга выполняются при каждом запуске приложения.</string>
+    <string name="sub_section_data">Отправка данных</string>
+    <string name="sub_send_hwid">Отправлять HWID</string>
+    <string name="sub_send_hwid_hint">При обращении по адресу устройство передаёт версию Android, модель и HWID, ни одно из которых не содержит персональных данных.</string>
+    <string name="sub_timeout">Тайм-аут запроса подписки</string>
+    <string name="sub_seconds">%1$d сек</string>
+    <string name="sub_user_agent">User-Agent</string>
+    <string name="sub_user_agent_hint">От него может зависеть формат конфигов. Оставьте по умолчанию, если вам не сказали изменить.</string>
+    <string name="sub_reset">Сбросить</string>
+    <string name="sub_section_sort">Правило сортировки серверов</string>
+    <string name="sub_sort_none">Без сортировки</string>
+    <string name="sub_sort_ping">Сортировать по пингу</string>
+    <string name="sub_sort_alpha">Сортировать по алфавиту</string>
+    <string name="sub_settings_title">Параметры подписки</string>
+    <string name="sub_section_sync">Синхронизация</string>
+    <string name="sub_auto">Обновлять автоматически</string>
+    <string name="sub_every">Как часто</string>
+    <string name="sub_every_panel">Как в подписке</string>
+    <string name="sub_hours_short">%1$d ч</string>
+    <string name="sub_days_short">%1$d дн.</string>
+    <string name="sub_on_launch">Сразу при запуске</string>
+    <string name="sub_on_launch_hint">Обновлять при каждом открытии приложения, не дожидаясь срока.</string>
+    <string name="sub_ping_launch">Замер задержки при запуске</string>
+    <string name="sub_section_privacy">Отправлять HWID</string>
+    <string name="sub_device_info">Идентификатор устройства</string>
+    <string name="sub_device_info_hint">При обращении по адресу ваше устройство передаст версию Android и HWID, ни одно из которых не содержит персональных данных.</string>
+    <string name="sub_section_network">Сеть</string>
+    <string name="sub_wait">Ожидание ответа</string>
+    <string name="sub_client_id">User-Agent</string>
+    <string name="sub_advanced">Дополнительно</string>
+    <string name="sub_client_id_hint">Так приложение представляется при загрузке. От этого может зависеть формат конфигов; меняйте, только если вам так сказали.</string>
+    <string name="sub_section_order">Порядок ключей</string>
+    <string name="sub_order_panel">По умолчанию</string>
+    <string name="sub_order_ping">По пингу</string>
+    <string name="sub_order_alpha">А–Я</string>
+    <string name="action_subscription_settings">Параметры</string>
+    <string name="settings_language_auto">Авто</string>
+    <string name="sub_ua_value">Значение</string>
+    <string name="sub_auto_hint">Раз в час</string>
+    <string name="sub_auto_hint_hours">Раз в %1$d ч.</string>
+    <string name="subscription_updating">Обновление…</string>
+    <string name="settings_section_diagnostics">Диагностика</string>
+    <string name="settings_logs_open">Просмотр логов</string>
+    <string name="logs_title">Логи</string>
+    <string name="logs_subscription">Подписки</string>
+    <string name="logs_connection">Подключения</string>
+    <string name="logs_xray_debug">Xray (отладка)</string>
+    <string name="logs_empty">Журнал пуст</string>
+    <string name="logs_copied">Журнал скопирован</string>
+    <string name="logs_clear">Очистить</string>
+    <string name="settings_section_interface">Интерфейс</string>
+    <string name="interface_plain">Обычный</string>
+    <string name="interface_glass">Жидкое стекло</string>
+    <string name="interface_hint">«Обычный» плоский и нетребовательный: выберите его, если приложение тормозит на вашем устройстве.</string>
+    <string name="settings_section_theme">Тема</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+</resources>

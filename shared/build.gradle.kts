@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
 }
 
 kotlin {
@@ -11,6 +13,8 @@ kotlin {
         namespace = "com.waytun.shared"
         compileSdk = 37
         minSdk = 29
+        // Off by default for KMP Android libraries; Compose resources (strings) ship as Android assets through it.
+        androidResources { enable = true }
     }
     jvm("desktop")
     // Compile-only purity check: with a non-JVM target in the build, commonMain can no longer see the JDK, so
@@ -35,6 +39,13 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(compose.runtime)
+            api(compose.foundation)
+            api(compose.material3)
+            api(compose.ui)
+            api(compose.components.resources)
+            api(libs.cmp.material.icons.core)
+            api(libs.haze)
             api(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             api(libs.ktor.client.core)
@@ -58,4 +69,10 @@ kotlin {
 dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
+}
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.waytun.app.res"
+    generateResClass = always
 }

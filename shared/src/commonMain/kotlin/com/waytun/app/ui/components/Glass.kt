@@ -1,8 +1,5 @@
 package com.waytun.app.ui.components
 
-import android.os.Build
-import android.view.ViewParent
-import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -62,13 +59,11 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import com.waytun.app.ui.theme.Cyan
 import com.waytun.app.ui.theme.InterfaceStyle
 import com.waytun.app.ui.theme.LocalInterfaceStyle
@@ -336,40 +331,12 @@ fun GlassScaffold(
     }
 }
 
-/** Full-screen blur behind a dialog window (Android 12+ where cross-window blur is available). */
+/**
+ * The backdrop of a dialog window: on Android a dimmed, and in glass mode blurred (12+), copy of the app behind it;
+ * desktop dialogs are drawn inside the window, which already dims what's behind.
+ */
 @Composable
-private fun BlurBehindDialogWindow(radius: Int = 28) {
-    val view = LocalView.current
-    SideEffect {
-        var parent: ViewParent? = view.parent
-        var provider: DialogWindowProvider? = view as? DialogWindowProvider
-        while (provider == null && parent != null) {
-            provider = parent as? DialogWindowProvider
-            parent = parent.parent
-        }
-        val window = provider?.window ?: return@SideEffect
-        window.setDimAmount(0.28f)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            window.attributes = window.attributes.also { it.blurBehindRadius = radius }
-        }
-    }
-}
-
-/** Plain mode: the same dimmed backdrop, with no blur of the screen behind. */
-@Composable
-private fun DimOnlyDialogWindow() {
-    val view = LocalView.current
-    SideEffect {
-        var parent: ViewParent? = view.parent
-        var provider: DialogWindowProvider? = view as? DialogWindowProvider
-        while (provider == null && parent != null) {
-            provider = parent as? DialogWindowProvider
-            parent = parent.parent
-        }
-        provider?.window?.setDimAmount(0.5f)
-    }
-}
+internal expect fun DialogBackdrop(glass: Boolean)
 
 /** Drop-in for Material's AlertDialog: a glass card floating over a blurred copy of the app. */
 @Composable
@@ -383,7 +350,7 @@ fun GlassAlertDialog(
     text: (@Composable () -> Unit)? = null
 ) {
     Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        if (LocalInterfaceStyle.current == InterfaceStyle.GLASS) BlurBehindDialogWindow() else DimOnlyDialogWindow()
+        DialogBackdrop(glass = LocalInterfaceStyle.current == InterfaceStyle.GLASS)
         GlassCard(
             style = GlassStyle.Overlay,
             shape = RoundedCornerShape(30.dp),

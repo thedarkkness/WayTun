@@ -18,9 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.shape.CircleShape
-import com.waytun.app.R
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_scroll_top
 
 /** A small round "back to top" button that fades in once the list has been scrolled down. */
 @Composable
@@ -32,7 +33,7 @@ fun ScrollToTopButton(visible: Boolean, onClick: () -> Unit, modifier: Modifier 
         modifier = modifier
     ) {
         GlassIconButton(onClick = onClick, size = 44.dp) {
-            Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.action_scroll_top))
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(Res.string.action_scroll_top))
         }
     }
 }

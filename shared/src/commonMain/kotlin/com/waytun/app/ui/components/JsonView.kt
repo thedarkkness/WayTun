@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import com.waytun.app.ui.icons.AppIcons
-import com.waytun.app.R
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_copy
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -55,7 +56,7 @@ import com.waytun.app.ui.theme.Amber
 import com.waytun.app.ui.theme.Cyan
 import com.waytun.app.ui.theme.Mint
 import com.waytun.app.ui.theme.Rose
-import org.json.JSONObject
+import com.waytun.app.core.json.JSONObject
 
 /** Pretty-printed JSON text (2-space indent); returns [text] unchanged if it isn't valid JSON. */
 fun prettyJson(text: String): String =
@@ -139,7 +140,7 @@ fun JsonLinesCard(lines: List<String>, onCopy: () -> Unit, modifier: Modifier = 
             size = 44.dp,
             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
         ) {
-            Icon(AppIcons.ContentCopy, contentDescription = stringResource(R.string.action_copy), modifier = Modifier.size(20.dp))
+            Icon(AppIcons.ContentCopy, contentDescription = stringResource(Res.string.action_copy), modifier = Modifier.size(20.dp))
         }
     }
 }
