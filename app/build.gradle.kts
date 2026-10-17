@@ -77,11 +77,10 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
-    // Local storage: tunnel metadata (Room) and settings (DataStore)
+    // Local storage: tunnel metadata (Room)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-    implementation(libs.androidx.datastore.preferences)
 
     // WireGuard backend (GoBackend)
     implementation(libs.wireguard.tunnel)

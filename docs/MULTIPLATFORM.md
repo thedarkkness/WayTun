@@ -52,8 +52,9 @@ implements it on top of **the same SharedPreferences files**, so user settings s
 Desktop gets a DataStore KMP (or file) implementation in stage 2. The unused DataStore dependency is removed.
 
 ### DI: Hilt now, Koin with the shared UI
-Classes in `shared` use plain constructor injection, no DI annotations. `shared` ships a Koin module for desktop
-and iOS. Android keeps Hilt for now and provides the shared classes with `@Provides`: converting ~30 ViewModels,
+Classes in `shared` use plain constructor injection, no DI annotations. Android keeps Hilt and provides the shared
+classes with `@Provides` (`di/SharedModule.kt`, `RepositoryModule.kt`). The Koin module for desktop/iOS is added in
+stage 2 together with its first consumer, the desktop app. Why Android stays on Hilt for now: converting ~30 ViewModels,
 three VPN service processes and the receivers at the same time as the data layer would risk breaking Android for
 no user-visible gain. The full Android switch to Koin happens in stage 2 together with moving the UI into
 `shared`, where Compose Multiplatform ViewModels need a multiplatform DI anyway.
@@ -94,6 +95,36 @@ iOS (and a macOS Network Extension, if ever) can't spawn processes, so there the
   (needs an Apple Developer ID).
 - **iOS**: NEPacketTunnelProvider only (~50 MB memory limit). App Store rule 5.4 requires an organization
   account and the Russian App Store removes VPNs on request: **stop and ask before any iOS work**.
+
+## Stage 1 status
+
+Done (Android behaviour unchanged):
+- `shared` (KMP: `androidLibrary` + `jvm("desktop")`), source sets `commonMain`, `jvmCommonMain` (android + desktop),
+  `androidMain`, `desktopMain`, `commonTest`, `desktopTest`.
+- **commonMain**: parsers (share links, JSON/base64 subscriptions), `TunnelDescriptor`, obfuscation (settings,
+  generator, AWG junk, `ObfuscationManager` over `KeyValueStore`), `FlagName`, `Engine`/`VpnBackend`,
+  `XrayConfigBuilder`, `ConfigCipher`, Room KMP (entities, DAOs, `AppDatabase` v7, migrations as SQL),
+  `TunnelRepository`, `SubscriptionClient` (Ktor) + `SubscriptionRepository`, `GitHubReleaseApi` (Ktor),
+  `AppLog` policy, `PlatformLog`, `TunnelSession` (over a `NetworkProbe`).
+- **jvmCommonMain**: `FileLogStore`, `TunnelHealthProbe` (sockets), `SpeedTest`, `PairingCrypto`.
+- **androidMain**: SupportSQLite migrations and `withTransaction`, `SharedPreferencesStore`, OkHttp engine,
+  logcat sink, `AndroidNetworkProbe`, `AppLog.init(context)`.
+- **desktopMain**: bundled-SQLite database (`openDesktopDatabase`), JDK HTTP engine, stderr sink.
+- Compatibility stand-ins in common code for `org.json`, `android.util.Base64` and `URLEncoder`/`URLDecoder` with
+  Android's exact behaviour: stored links and JSON entries are matched as text on every refresh.
+- Tests (run on jvm: `./gradlew :shared:desktopTest`): golden data recorded from the 1.3.2 Android implementation
+  (real `android.util.Base64` + `org.json` under Robolectric) for 35 share links, 16 subscription bodies, 15 JSON
+  entries, Xray configs, obfuscation settings/profiles, panel headers; Room migrations v1→7 and v6→7 with schema
+  validation; transactions; `SubscriptionClient` against a mock engine.
+- `./gradlew :shared:compileCommonMainKotlinMetadata -Pwaytun.purityCheck` compiles `commonMain` without the JDK
+  (adds a compile-only `linuxX64` target), so code that wouldn't build for iOS fails now instead of in stage 6.
+- The Room identity hash is unchanged (`9a292c1d…`), the release APK keeps `com.waytun.app` 7/1.3.2 and the release
+  certificate.
+
+Still in `app` (Android-only on purpose): `TunnelConfigParser` (WireGuard/AmneziaWG config libraries ship as
+Android AARs; desktop gets a pure-Kotlin wg-quick parser in stage 3), `ServerAddressResolver`, the VPN backends and
+services, `KeystoreConfigCipher`, `DeviceIdentity`, `AppLanguage`, `PingManager`, `UiPrefs`, notifications,
+updater, QR scanner, TV and all UI (moves with Compose Multiplatform in stage 2).
 
 ## Stages
 

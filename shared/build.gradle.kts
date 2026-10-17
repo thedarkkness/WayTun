@@ -39,7 +39,6 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             api(libs.ktor.client.core)
             api(libs.androidx.room.runtime)
-            implementation(libs.koin.core)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
