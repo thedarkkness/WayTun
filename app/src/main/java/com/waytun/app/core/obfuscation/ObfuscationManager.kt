@@ -27,7 +27,8 @@ class ObfuscationManager @Inject constructor(
     private val prefs = context.getSharedPreferences("obfuscation", Context.MODE_PRIVATE)
 
     init {
-        // The defaults changed (everything on, light level): bring existing installs to them once.
+        // The defaults changed (obfuscation and QUIC blocking now start off, for stability on devices
+        // whose networks handle the extra packet shaping badly): bring existing installs to them once.
         if (prefs.getInt(KEY_DEFAULTS_VERSION, 0) < DEFAULTS_VERSION) {
             prefs.edit().remove(KEY_SETTINGS).remove(KEY_PROFILE).putInt(KEY_DEFAULTS_VERSION, DEFAULTS_VERSION).apply()
         }
@@ -86,7 +87,7 @@ class ObfuscationManager @Inject constructor(
         const val KEY_SETTINGS = "settings"
         const val KEY_PROFILE = "profile"
         const val KEY_DEFAULTS_VERSION = "defaultsVersion"
-        const val DEFAULTS_VERSION = 2
+        const val DEFAULTS_VERSION = 3
         const val CHECK_INTERVAL_MS = 15_000L
     }
 }

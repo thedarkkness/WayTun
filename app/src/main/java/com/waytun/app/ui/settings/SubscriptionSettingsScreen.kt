@@ -117,7 +117,13 @@ fun SubscriptionSettingsScreen(
                 )
 
                 SettingsCard(stringResource(R.string.sub_section_sync), Indigo) {
-                    SwitchRow(stringResource(R.string.sub_auto), stringResource(R.string.sub_auto_hint), settings.autoUpdate, Indigo) { v ->
+                    val intervalHours = current.panelIntervalHours ?: 1
+                    val autoHint = if (intervalHours == 1) {
+                        stringResource(R.string.sub_auto_hint)
+                    } else {
+                        stringResource(R.string.sub_auto_hint_hours, intervalHours)
+                    }
+                    SwitchRow(stringResource(R.string.sub_auto), autoHint, settings.autoUpdate, Indigo) { v ->
                         viewModel.update { it.copy(autoUpdate = v) }
                     }
                     SwitchRow(stringResource(R.string.sub_on_launch), stringResource(R.string.sub_on_launch_hint), settings.updateOnOpen, Indigo) { v ->

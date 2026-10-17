@@ -39,9 +39,9 @@ object InterfaceStyleStore {
         prefs?.edit()?.putString(KEY, style.name)?.apply()
     }
 
-    /** Until the user picks one: glass where the device can afford it, plain on low-RAM phones and before Android 12. */
+    /** Until the user picks one: glass from Android 15 onward where the device can afford it; plain on low-RAM phones and on Android 10-14. */
     private fun defaultFor(context: Context): InterfaceStyle {
         val lowRam = context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
-        return if (lowRam || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) InterfaceStyle.PLAIN else InterfaceStyle.GLASS
+        return if (lowRam || Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) InterfaceStyle.PLAIN else InterfaceStyle.GLASS
     }
 }

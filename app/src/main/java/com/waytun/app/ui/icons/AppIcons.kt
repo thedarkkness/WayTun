@@ -42,6 +42,9 @@ object AppIcons {
         )
     }
 
+    /** Paper-plane "send": the glyph for a subscription's Telegram bot-link button. */
+    val Send: ImageVector by lazy { icon("Send", "M2.01,21L23,12 2.01,3 2,10l15,2 -15,2z") }
+
     private fun icon(name: String, pathData: String): ImageVector =
         ImageVector.Builder(name = name, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
             .addPath(PathParser().parsePathString(pathData).toNodes(), fill = SolidColor(Color.Black))

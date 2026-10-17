@@ -94,7 +94,8 @@ data class SubscriptionHeader(
     val supportEmail: String? = null,
     val pinned: Boolean = false,
     val sortMode: Int = 0,
-    val autoUpdate: Boolean = true
+    val autoUpdate: Boolean = true,
+    val botLink: String? = null
 )
 
 /** A run of tunnels in the list: standalone ones ([subscription] == null) or one subscription's. */
@@ -252,7 +253,8 @@ class TunnelListViewModel @Inject constructor(
                     supportEmail = subscription.supportEmail,
                     pinned = subscription.settings.pinned,
                     sortMode = subscription.settings.sortMode,
-                    autoUpdate = subscription.settings.autoUpdate
+                    autoUpdate = subscription.settings.autoUpdate,
+                    botLink = subscription.botLink
                 ),
                 tunnels = when (subscription.settings.sortMode) {
                     SORT_BY_PING -> keys.sortedBy { it.ping?.millis ?: Long.MAX_VALUE }
@@ -492,7 +494,7 @@ class TunnelListViewModel @Inject constructor(
         if (result.skipped > 0) {
             context.getString(R.string.import_bulk_partial, result.imported, result.skipped)
         } else {
-            context.getString(R.string.import_bulk_success, result.imported)
+            context.getString(R.string.subscription_import_success)
         }
 
     private fun subscriptionError(error: Throwable): String =
@@ -538,7 +540,7 @@ class TunnelListViewModel @Inject constructor(
                 when {
                     imported == 0 -> context.getString(R.string.import_error_nothing_recognized)
                     skipped > 0 -> context.getString(R.string.import_bulk_partial, imported, skipped)
-                    else -> context.getString(R.string.import_bulk_success, imported)
+                    else -> context.getString(R.string.config_import_success)
                 }
             )
         }
@@ -562,7 +564,7 @@ class TunnelListViewModel @Inject constructor(
         viewModelScope.launch {
             val finalName = name.ifBlank { context.getString(R.string.import_default_name) }
             tunnelRepository.importTunnel(finalName, pending.protocol, pending.rawConfigText)
-                .onSuccess { sendMessage(context.getString(R.string.import_success, finalName)) }
+                .onSuccess { sendMessage(context.getString(R.string.config_import_success)) }
                 .onFailure { sendError(it.message ?: context.getString(R.string.vpn_error_unknown)) }
         }
     }

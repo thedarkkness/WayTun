@@ -10,7 +10,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
+import android.os.PowerManager
 import android.provider.OpenableColumns
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -120,6 +122,7 @@ fun TunnelListScreen(
 
     var pendingConnectTunnelId by remember { mutableStateOf<String?>(null) }
     var showNotificationRationale by remember { mutableStateOf(false) }
+    var showBatteryRationale by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<TunnelListItem?>(null) }
     var editedImportName by remember(pendingImport) { mutableStateOf(pendingImport?.suggestedName.orEmpty()) }
     var showImportMenu by remember { mutableStateOf(false) }
@@ -166,6 +169,10 @@ fun TunnelListScreen(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* Connecting proceeds either way; this only affects whether the status notice is visible. */ }
+
+    val batteryExemptionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* Connecting proceeds either way; this only affects whether the OS can kill the tunnel in the background. */ }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -227,6 +234,29 @@ fun TunnelListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showNotificationRationale = false }) {
+                    Text(stringResource(R.string.action_not_now))
+                }
+            }
+        )
+    }
+
+    if (showBatteryRationale) {
+        GlassAlertDialog(
+            onDismissRequest = { showBatteryRationale = false },
+            title = { Text(stringResource(R.string.battery_rationale_title)) },
+            text = { Text(stringResource(R.string.battery_rationale_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBatteryRationale = false
+                    runCatching {
+                        batteryExemptionLauncher.launch(
+                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+                        )
+                    }
+                }) { Text(stringResource(R.string.action_continue)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatteryRationale = false }) {
                     Text(stringResource(R.string.action_not_now))
                 }
             }
@@ -480,6 +510,14 @@ fun TunnelListScreen(
             PackageManager.PERMISSION_GRANTED
         ) {
             showNotificationRationale = true
+        } else if (!isTv) {
+            // The OS (and on many phones, the manufacturer's own battery manager on top of it) can kill a
+            // backgrounded VPN service to save power, silently dropping the tunnel until it's reopened by hand.
+            // Asking once to be exempted is what keeps a connection up unattended, the way users expect.
+            val powerManager = context.getSystemService(PowerManager::class.java)
+            if (powerManager?.isIgnoringBatteryOptimizations(context.packageName) == false) {
+                showBatteryRationale = true
+            }
         }
         beginConnect(selected.id)
     }
@@ -618,7 +656,6 @@ fun TunnelListScreen(
                     item(key = "subscription-${subscription.id}") {
                         SubscriptionCard(
                             subscription = subscription,
-                            tunnelCount = section.tunnels.size,
                             onToggleCollapsed = { viewModel.onToggleSubscriptionCollapsed(subscription.id) },
                             onRefresh = { viewModel.onRefreshSubscription(subscription.id) },
                             onPingAll = { viewModel.pingAll(section.tunnels.map { it.id }) },

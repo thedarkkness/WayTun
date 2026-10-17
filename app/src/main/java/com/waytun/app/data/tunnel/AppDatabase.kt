@@ -7,12 +7,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.waytun.app.data.subscription.SubscriptionDao
 import com.waytun.app.data.subscription.SubscriptionEntity
 
-@Database(entities = [TunnelEntity::class, SubscriptionEntity::class], version = 6, exportSchema = false)
+@Database(entities = [TunnelEntity::class, SubscriptionEntity::class], version = 7, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tunnelDao(): TunnelDao
     abstract fun subscriptionDao(): SubscriptionDao
 
     companion object {
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `subscriptions` ADD COLUMN `botLink` TEXT")
+            }
+        }
+
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `subscriptions` ADD COLUMN `autoUpdate` INTEGER NOT NULL DEFAULT 1")

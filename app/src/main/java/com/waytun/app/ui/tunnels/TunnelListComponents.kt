@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.sp
@@ -72,6 +73,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -91,7 +93,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -104,6 +108,8 @@ import com.waytun.app.R
 import com.waytun.app.data.ping.PingResult
 import com.waytun.app.data.subscription.SubscriptionUsage
 import com.waytun.app.ui.icons.AppIcons
+import com.waytun.app.ui.theme.Sky
+import com.waytun.app.ui.theme.WayTunColors
 import com.waytun.app.ui.theme.WayTunTheme
 import com.waytun.app.ui.tv.tvFocusBorder
 import java.text.DateFormat
@@ -597,6 +603,9 @@ private fun Tag(text: String, color: Color = Color.Unspecified) {
 
 // ---- subscriptions ---------------------------------------------------------------------------
 
+/** One quick-link pill under a subscription: a bot-link gets the Telegram glyph, support/email stay plain text. */
+private data class LinkButton(val label: Int, val url: String, val icon: ImageVector? = null, val iconTint: Color? = null)
+
 /** Fold and unfold use the same duration and easing, so the card closes and opens as mirror images. */
 private const val FOLD_MILLIS = 380
 private val foldInTransition = expandVertically(tween(FOLD_MILLIS, easing = FastOutSlowInEasing), expandFrom = Alignment.Top) +
@@ -608,7 +617,6 @@ private val foldOutTransition = shrinkVertically(tween(FOLD_MILLIS, easing = Fas
 @Composable
 fun SubscriptionCard(
     subscription: SubscriptionHeader,
-    tunnelCount: Int,
     onToggleCollapsed: () -> Unit,
     onRefresh: () -> Unit,
     onPingAll: () -> Unit,
@@ -652,11 +660,15 @@ fun SubscriptionCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        stringResource(R.string.subscription_connections, tunnelCount),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (subscription.updatedAtEpochMillis > 0) {
+                        val ago = rememberRelativeAgo(subscription.updatedAtEpochMillis)
+                        Text(
+                            stringResource(R.string.subscription_updated, ago),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
                 TapTarget(onClick = onPingAll, size = 40.dp) {
                     Icon(AppIcons.Signal, contentDescription = stringResource(R.string.action_ping_all), modifier = Modifier.size(19.dp))
@@ -730,28 +742,32 @@ fun SubscriptionCard(
             ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (usage != null) UsageBlock(usage)
-                MetaRow(subscription, usage)
+                MetaRow(usage)
                 subscription.announce?.takeIf { it.isNotBlank() }?.let { Announcement(it, subscription.announceUrl, onOpenUrl) }
                 subscription.description?.takeIf { it.isNotBlank() }?.let { Description(it) }
                 val links = listOfNotNull(
-                    subscription.supportUrl?.let { R.string.subscription_support to it },
-                    subscription.webPageUrl?.let { R.string.subscription_website to it },
-                    subscription.supportEmail?.let { R.string.subscription_email to "mailto:$it" }
+                    subscription.botLink?.let { LinkButton(R.string.subscription_bot, it, AppIcons.Send, Sky) },
+                    subscription.supportUrl?.let { LinkButton(R.string.subscription_support, it) },
+                    subscription.supportEmail?.let { LinkButton(R.string.subscription_email, "mailto:$it") }
                 )
                 if (links.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        links.forEach { (label, url) ->
-                            Box(
-                                contentAlignment = Alignment.Center,
+                        links.forEach { link ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .heightIn(min = 40.dp)
                                     .tvFocusBorder(RoundedCornerShape(50))
                                     .glass(RoundedCornerShape(50), GlassStyle.Inset)
-                                    .clickable { onOpenUrl(url) }
+                                    .clickable { onOpenUrl(link.url) }
                                     .padding(horizontal = 18.dp)
                             ) {
+                                if (link.icon != null) {
+                                    Icon(link.icon, null, tint = link.iconTint ?: MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(7.dp))
+                                }
                                 Text(
-                                    stringResource(label),
+                                    stringResource(link.label),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -776,6 +792,42 @@ fun SubscriptionCard(
     }
 }
 
+/**
+ * "Just now", then ticking seconds, then DateUtils' own minute-and-up granularity - never both units
+ * at once. Ticks itself every second for the first minute so the seconds actually count up on screen,
+ * then backs off to a cheap 30s tick once it's coarse enough that nobody would notice the difference.
+ */
+@Composable
+private fun rememberRelativeAgo(epochMillis: Long): String {
+    var now by remember(epochMillis) { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(epochMillis) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(if (now - epochMillis < 60_000L) 1_000L else 30_000L)
+        }
+    }
+    val diffSeconds = (now - epochMillis).coerceAtLeast(0) / 1000
+    return when {
+        diffSeconds < 1 -> stringResource(R.string.ago_just_now)
+        diffSeconds < 60 -> stringResource(R.string.ago_seconds, diffSeconds)
+        else -> DateUtils.getRelativeTimeSpanString(
+            epochMillis, now, DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE
+        ).toString()
+    }
+}
+
+/** Green when there's plenty left, red once it's nearly gone, sliding smoothly through amber in between - no hard jumps. */
+private fun trafficTint(fraction: Float, colors: WayTunColors): Color {
+    val f = fraction.coerceIn(0f, 1f)
+    return if (f <= 0.5f) lerp(colors.connected, colors.connecting, f / 0.5f)
+    else lerp(colors.connecting, colors.danger, (f - 0.5f) / 0.5f)
+}
+
+/**
+ * A compact, rounded quota capsule - sized to its own text, not stretched across the card - that fills in place as
+ * traffic is used, the way a battery indicator does. Unlimited plans get the same capsule with no fill, saying so
+ * outright instead of leaving the user to guess.
+ */
 @Composable
 private fun UsageBlock(usage: SubscriptionUsage) {
     val colors = WayTunTheme.colors
@@ -784,38 +836,39 @@ private fun UsageBlock(usage: SubscriptionUsage) {
     if (usage.uploadBytes == null && usage.downloadBytes == null) return
     val total = usage.totalBytes?.takeIf { it > 0 }
     val fraction = total?.let { (used.toFloat() / it).coerceIn(0f, 1f) }
-    val tint = when {
-        fraction == null -> colors.connected
-        fraction < 0.7f -> colors.connected
-        fraction < 0.9f -> colors.connecting
-        else -> colors.danger
-    }
-    Column {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                if (total != null) stringResource(R.string.subscription_usage, formatBytes(used, units), formatBytes(total, units))
-                else stringResource(R.string.subscription_usage_unlimited, formatBytes(used, units)),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            fraction?.let {
-                Text("${(it * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium, color = tint, fontWeight = FontWeight.Bold)
+    val tint = fraction?.let { trafficTint(it, colors) } ?: colors.connected
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .background(tint.copy(alpha = 0.12f))
+            .border(1.dp, tint.copy(alpha = 0.45f), shape)
+    ) {
+        if (fraction != null) {
+            Row(Modifier.matchParentSize()) {
+                Box(
+                    Modifier
+                        .weight(fraction.coerceIn(0.035f, 1f))
+                        .fillMaxHeight()
+                        .background(tint.copy(alpha = 0.3f))
+                )
+                if (fraction < 1f) Spacer(Modifier.weight((1f - fraction).coerceAtLeast(0.0001f)))
             }
         }
-        Spacer(Modifier.height(5.dp))
-        LinearProgressIndicator(
-            progress = { fraction ?: 1f },
+        Text(
+            if (total != null) stringResource(R.string.subscription_usage, formatBytes(used, units), formatBytes(total, units))
+            else stringResource(R.string.subscription_usage_unlimited, formatBytes(used, units)),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
             color = tint,
-            trackColor = tint.copy(alpha = 0.18f),
-            strokeCap = StrokeCap.Round,
-            modifier = Modifier.fillMaxWidth().height(7.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MetaRow(subscription: SubscriptionHeader, usage: SubscriptionUsage?) {
+private fun MetaRow(usage: SubscriptionUsage?) {
     val colors = WayTunTheme.colors
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -843,14 +896,6 @@ private fun MetaRow(subscription: SubscriptionHeader, usage: SubscriptionUsage?)
                 }
             }
         }
-        if (subscription.updatedAtEpochMillis > 0) {
-            val ago = DateUtils.getRelativeTimeSpanString(
-                subscription.updatedAtEpochMillis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS,
-                DateUtils.FORMAT_ABBREV_RELATIVE
-            ).toString()
-            Tag(stringResource(R.string.subscription_updated, ago))
-        }
-        if (subscription.autoUpdate) Tag(stringResource(R.string.subscription_auto_update, 1))
     }
 }
 

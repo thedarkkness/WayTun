@@ -38,7 +38,9 @@ data class SubscriptionEntity(
     /** Custom User-Agent; null = the app's default. */
     val userAgent: String? = null,
     @ColumnInfo(defaultValue = "0") val sortMode: Int = 0,
-    @ColumnInfo(defaultValue = "0") val pinned: Boolean = false
+    @ColumnInfo(defaultValue = "0") val pinned: Boolean = false,
+    /** Custom `bot-link` header: a dedicated bot/chat link, separate from `support-url`. */
+    val botLink: String? = null
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -69,7 +71,8 @@ data class SubscriptionEntity(
             timeoutSeconds == other.timeoutSeconds &&
             userAgent == other.userAgent &&
             sortMode == other.sortMode &&
-            pinned == other.pinned
+            pinned == other.pinned &&
+            botLink == other.botLink
     }
 
     override fun hashCode(): Int {

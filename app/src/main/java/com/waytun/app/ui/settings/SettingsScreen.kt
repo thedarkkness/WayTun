@@ -1,8 +1,6 @@
 package com.waytun.app.ui.settings
 
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.os.Build
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
@@ -93,6 +91,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.PaddingValues
 import com.waytun.app.ui.theme.InterfaceStyle
 import com.waytun.app.ui.theme.InterfaceStyleStore
+import com.waytun.app.ui.theme.AppThemeMode
+import com.waytun.app.ui.theme.AppThemeStore
 import com.waytun.app.core.language.AppLanguage
 import com.waytun.app.core.obfuscation.ObfuscationLevel
 import com.waytun.app.core.obfuscation.ObfuscationProfile
@@ -227,6 +227,34 @@ fun SettingsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            item(key = "theme") {
+                val themeMode by AppThemeStore.mode.collectAsStateWithLifecycle()
+                SettingsCard(stringResource(R.string.settings_section_theme), Sky) {
+                    GlassSegmented(
+                        labels = listOf(stringResource(R.string.theme_light), stringResource(R.string.theme_dark)),
+                        selected = if (themeMode == AppThemeMode.DARK) 1 else 0,
+                        onSelect = { index -> AppThemeStore.set(if (index == 1) AppThemeMode.DARK else AppThemeMode.LIGHT) }
+                    )
+                }
+            }
+
+            item(key = "interface") {
+                val interfaceStyle by InterfaceStyleStore.style.collectAsStateWithLifecycle()
+                SettingsCard(stringResource(R.string.settings_section_interface), Sky) {
+                    GlassSegmented(
+                        labels = listOf(stringResource(R.string.interface_plain), stringResource(R.string.interface_glass)),
+                        selected = if (interfaceStyle == InterfaceStyle.GLASS) 1 else 0,
+                        onSelect = { index -> InterfaceStyleStore.set(if (index == 1) InterfaceStyle.GLASS else InterfaceStyle.PLAIN) }
+                    )
+                    Text(
+                        stringResource(R.string.interface_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+
             item(key = "obfuscation") {
                 ObfuscationSection(
                     settings = obfuscation,
@@ -245,23 +273,6 @@ fun SettingsScreen(
                     Amber
                 ) { v -> viewModel.updateObfuscation { it.copy(blockQuic = v) } }
             }
-            }
-
-            item(key = "interface") {
-                val interfaceStyle by InterfaceStyleStore.style.collectAsStateWithLifecycle()
-                SettingsCard(stringResource(R.string.settings_section_interface), Sky) {
-                    GlassSegmented(
-                        labels = listOf(stringResource(R.string.interface_plain), stringResource(R.string.interface_glass)),
-                        selected = if (interfaceStyle == InterfaceStyle.GLASS) 1 else 0,
-                        onSelect = { index -> InterfaceStyleStore.set(if (index == 1) InterfaceStyle.GLASS else InterfaceStyle.PLAIN) }
-                    )
-                    Text(
-                        stringResource(R.string.interface_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
             }
 
             item(key = "language") {
@@ -291,12 +302,7 @@ fun SettingsScreen(
                 )
                 InfoRow(stringResource(R.string.settings_os_label), "Android ${Build.VERSION.RELEASE}")
                 val hwid = remember { DeviceIdentity.hwid(activity) }
-                val hwidCopied = stringResource(R.string.settings_hwid_copied)
-                InfoRow(stringResource(R.string.settings_hwid), hwid) {
-                    activity.getSystemService(ClipboardManager::class.java)
-                        ?.setPrimaryClip(ClipData.newPlainText("HWID", hwid))
-                    scope.launch { snackbarHostState.showWayTun(hwidCopied) }
-                }
+                InfoRow(stringResource(R.string.settings_hwid), hwid)
                 InfoRow(stringResource(R.string.settings_developer), stringResource(R.string.settings_developer_value))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 Text(

@@ -11,6 +11,7 @@
     <string name="vpn_status_disconnecting">Disconnecting…</string>
     <string name="vpn_status_disconnected">Disconnected</string>
     <string name="notification_traffic_format">%1$s · ↓ %2$s ↑ %3$s</string>
+    <string name="notification_chip_default">VPN</string>
 
     <string name="vpn_error_unknown">Unknown error</string>
     <string name="vpn_error_native_code">The native backend rejected the tunnel (code %1$s)</string>
@@ -25,13 +26,15 @@
     <string name="import_error_field_invalid">Invalid value for field: %1$s</string>
     <string name="import_error_structure">The configuration file is malformed: %1$s</string>
     <string name="import_error_generic_field">configuration</string>
-    <string name="import_success">Tunnel \"%1$s\" imported</string>
+    <string name="config_import_success">✅ Import successful</string>
     <string name="import_default_name">New tunnel</string>
 
     <string name="notification_permission_rationale_title">Allow notifications</string>
     <string name="notification_permission_rationale_message">WayTun shows the connection status, tunnel name and traffic in a persistent notification while connected. Allow notifications so you can see it.</string>
     <string name="action_continue">Continue</string>
     <string name="action_not_now">Not now</string>
+    <string name="battery_rationale_title">Keep the connection stable</string>
+    <string name="battery_rationale_message">Some phones put apps to sleep in the background to save power, which can silently drop the VPN until you reopen it. Exempt WayTun from battery optimization so the connection stays up on its own.</string>
     <string name="vpn_permission_denied">VPN permission is required to connect</string>
     <string name="import_error_file_read">Couldn\'t read the selected file</string>
 
@@ -87,7 +90,6 @@
     <string name="action_paste_clipboard">Paste from clipboard</string>
     <string name="import_error_clipboard_empty">Clipboard is empty</string>
     <string name="import_error_nothing_recognized">No supported configuration found</string>
-    <string name="import_bulk_success">Imported connections: %1$d</string>
     <string name="import_bulk_partial">Imported: %1$d, skipped as unsupported: %2$d</string>
     <string name="subscription_loading">Loading subscription…</string>
     <string name="subscription_error">Couldn\'t load the subscription: %1$s</string>
@@ -111,13 +113,12 @@
     <string name="subscription_url_label">Subscription URL</string>
     <string name="subscription_url_invalid">Enter a link starting with http:// or https://</string>
     <string name="subscription_usage">%1$s of %2$s</string>
-    <string name="subscription_usage_unlimited">%1$s used</string>
+    <string name="subscription_usage_unlimited">%1$s · Unlimited</string>
     <string name="subscription_expires">until %1$s</string>
     <string name="action_refresh">Refresh</string>
     <string name="delete_subscription_title">Delete subscription?</string>
     <string name="delete_subscription_message">"%1$s" and all of its connections will be removed.</string>
     <string name="settings_hwid">Device ID (HWID)</string>
-    <string name="settings_hwid_copied">HWID copied</string>
     <string-array name="byte_units">
         <item>B</item>
         <item>KB</item>
@@ -150,13 +151,13 @@
     <string name="action_ping_all">Check latency</string>
     <string name="empty_title">Nothing here yet</string>
     <string name="empty_hint">Add a subscription link or paste a key from the clipboard — supported: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, AmneziaWG.</string>
-    <string name="subscription_connections">%1$d connections</string>
     <string name="subscription_updated">Updated %1$s</string>
-    <string name="subscription_auto_update">Auto · %1$d h</string>
+    <string name="ago_just_now">just now</string>
+    <string name="ago_seconds">%1$d sec. ago</string>
     <string name="subscription_days_left">%1$d d left</string>
     <string name="subscription_expired">Expired</string>
     <string name="subscription_support">Support</string>
-    <string name="subscription_website">Website</string>
+    <string name="subscription_bot">Bot</string>
     <string name="subscription_rename">Rename</string>
     <string name="subscription_copy_link">Copy link</string>
     <string name="subscription_link_copied">Link copied</string>
@@ -225,6 +226,7 @@
     <string name="detail_json_title">JSON data</string>
     <string name="detail_json_hint">The full configuration from the subscription, exactly as it was delivered. Press and hold to select and copy.</string>
     <string name="subscription_updated_ok">Subscription updated successfully</string>
+    <string name="subscription_import_success">✅ Subscription imported successfully</string>
     <string name="action_copy">Copy</string>
     <string name="config_copied">Config copied</string>
     <string name="json_copied">JSON copied</string>
@@ -275,6 +277,7 @@
     <string name="settings_language_auto">Auto</string>
     <string name="sub_ua_value">Value</string>
     <string name="sub_auto_hint">Every hour</string>
+    <string name="sub_auto_hint_hours">Every %1$d h</string>
     <string name="subscription_updating">Updating…</string>
     <string name="settings_section_diagnostics">Diagnostics</string>
     <string name="settings_logs_open">View logs</string>
@@ -289,4 +292,7 @@
     <string name="interface_plain">Standard</string>
     <string name="interface_glass">Liquid glass</string>
     <string name="interface_hint">Standard is flat and light on resources: pick it if the app feels slow on your device.</string>
+    <string name="settings_section_theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
 </resources>

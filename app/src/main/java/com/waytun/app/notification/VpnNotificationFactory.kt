@@ -98,13 +98,10 @@ class VpnNotificationFactory @Inject constructor(
             // "island" on Pixel, HyperOS and other skins that map Live Updates onto their own).
             // Ignored on older versions and when the user turns Live Updates off for the app.
             builder.setRequestPromotedOngoing(true)
-            builder.setShortCriticalText(chipText(tunnelName))
+            builder.setShortCriticalText(context.getString(R.string.notification_chip_default))
         }
         return builder.build()
     }
-
-    /** A leading flag emoji (e.g. "🇫🇮 Finland #1" -> "🇫🇮 Finland") keeps the chip short but recognizable. */
-    private fun chipText(tunnelName: String): String = tunnelName.substringBefore('#').trim().ifEmpty { tunnelName }
 
     private fun formatRate(bytesPerSec: Long): String {
         val units = context.resources.getStringArray(R.array.rate_units)

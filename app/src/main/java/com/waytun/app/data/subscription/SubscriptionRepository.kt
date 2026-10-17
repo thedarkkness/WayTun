@@ -35,6 +35,7 @@ data class SubscriptionSummary(
     val description: String? = null,
     val announceUrl: String? = null,
     val supportEmail: String? = null,
+    val botLink: String? = null,
     val settings: SubscriptionSettings = SubscriptionSettings()
 )
 
@@ -68,8 +69,8 @@ data class SubscriptionSyncResult(val imported: Int, val skipped: Int)
 
 class SubscriptionEmptyException : Exception("The subscription has no supported connections")
 
-/** Automatic refresh is always hourly; it isn't configurable. */
-private const val AUTO_UPDATE_INTERVAL_HOURS = 1
+/** When the panel doesn't advertise `profile-update-interval` at all. */
+private const val DEFAULT_UPDATE_INTERVAL_HOURS = 1
 private const val MILLIS_PER_HOUR = 3_600_000L
 
 @Singleton
@@ -99,6 +100,7 @@ class SubscriptionRepository @Inject constructor(
                     description = entity.description,
                     announceUrl = entity.announceUrl,
                     supportEmail = entity.supportEmail,
+                    botLink = entity.botLink,
                     settings = entity.settings()
                 )
             }
@@ -161,7 +163,8 @@ class SubscriptionRepository @Inject constructor(
                         webPageUrl = response.webPageUrl,
                         description = response.description,
                         announceUrl = response.announceUrl,
-                        supportEmail = response.supportEmail
+                        supportEmail = response.supportEmail,
+                        botLink = response.botLink
                     )
                 )
                 syncTunnels(id, links, keepTunnelIds = emptySet())
@@ -205,7 +208,8 @@ class SubscriptionRepository @Inject constructor(
                         webPageUrl = response.webPageUrl,
                         description = response.description,
                         announceUrl = response.announceUrl,
-                        supportEmail = response.supportEmail
+                        supportEmail = response.supportEmail,
+                        botLink = response.botLink
                     )
                     syncTunnels(id, links, keepTunnelIds)
                 }
@@ -214,15 +218,17 @@ class SubscriptionRepository @Inject constructor(
         }
 
     /**
-     * Refreshes every subscription whose last update is over an hour old (and, right after the app opens, those set to
-     * refresh on every launch); failures are left for the next try.
+     * Refreshes every subscription whose last update is older than its own panel-given interval (and, right after the
+     * app opens, those set to refresh on every launch); failures are left for the next try. The interval is whatever
+     * the panel's `profile-update-interval` header says - the app never offers its own value to override it with.
      */
     suspend fun refreshStale(keepTunnelIds: Set<String>, onOpen: Boolean = false) {
         val now = System.currentTimeMillis()
         subscriptionDao.getAll()
             .filter { entity ->
                 (onOpen && entity.updateOnOpen) ||
-                    (entity.autoUpdate && now - entity.updatedAtEpochMillis >= AUTO_UPDATE_INTERVAL_HOURS * MILLIS_PER_HOUR)
+                    (entity.autoUpdate && now - entity.updatedAtEpochMillis >=
+                        (entity.updateIntervalHours ?: DEFAULT_UPDATE_INTERVAL_HOURS) * MILLIS_PER_HOUR)
             }
             .forEach { refresh(it.id, keepTunnelIds) }
     }

@@ -10,6 +10,7 @@
     <string name="vpn_status_disconnecting">Отключение…</string>
     <string name="vpn_status_disconnected">Отключено</string>
     <string name="notification_traffic_format">%1$s · ↓ %2$s ↑ %3$s</string>
+    <string name="notification_chip_default">VPN</string>
 
     <string name="vpn_error_unknown">Неизвестная ошибка</string>
     <string name="vpn_error_native_code">Нативный бэкенд отклонил туннель (код %1$s)</string>
@@ -24,13 +25,15 @@
     <string name="import_error_field_invalid">Некорректное значение поля: %1$s</string>
     <string name="import_error_structure">Файл конфигурации повреждён: %1$s</string>
     <string name="import_error_generic_field">конфигурация</string>
-    <string name="import_success">Туннель «%1$s» импортирован</string>
+    <string name="config_import_success">✅ Успешный импорт</string>
     <string name="import_default_name">Новый туннель</string>
 
     <string name="notification_permission_rationale_title">Разрешить уведомления</string>
     <string name="notification_permission_rationale_message">WayTun показывает статус подключения, имя туннеля и трафик в постоянном уведомлении во время соединения. Разрешите уведомления, чтобы его видеть.</string>
     <string name="action_continue">Продолжить</string>
     <string name="action_not_now">Не сейчас</string>
+    <string name="battery_rationale_title">Стабильное соединение</string>
+    <string name="battery_rationale_message">Некоторые телефоны усыпляют приложения в фоне ради экономии батареи, из-за чего VPN может незаметно отключиться, пока вы его не откроете снова. Исключите WayTun из оптимизации батареи, чтобы соединение держалось само.</string>
     <string name="vpn_permission_denied">Для подключения нужно разрешение на VPN</string>
     <string name="import_error_file_read">Не удалось прочитать выбранный файл</string>
 
@@ -86,7 +89,6 @@
     <string name="action_paste_clipboard">Вставить из буфера</string>
     <string name="import_error_clipboard_empty">Буфер обмена пуст</string>
     <string name="import_error_nothing_recognized">Не найдено поддерживаемых конфигураций</string>
-    <string name="import_bulk_success">Импортировано подключений: %1$d</string>
     <string name="import_bulk_partial">Импортировано: %1$d, пропущено неподдерживаемых: %2$d</string>
     <string name="subscription_loading">Загрузка подписки…</string>
     <string name="subscription_error">Не удалось загрузить подписку: %1$s</string>
@@ -110,13 +112,12 @@
     <string name="subscription_url_label">Ссылка на подписку</string>
     <string name="subscription_url_invalid">Введите ссылку, начинающуюся с http:// или https://</string>
     <string name="subscription_usage">%1$s из %2$s</string>
-    <string name="subscription_usage_unlimited">Использовано %1$s</string>
+    <string name="subscription_usage_unlimited">%1$s · Безлимит</string>
     <string name="subscription_expires">до %1$s</string>
     <string name="action_refresh">Обновить</string>
     <string name="delete_subscription_title">Удалить подписку?</string>
     <string name="delete_subscription_message">Подписка «%1$s» и все её подключения будут удалены.</string>
     <string name="settings_hwid">ID устройства (HWID)</string>
-    <string name="settings_hwid_copied">HWID скопирован</string>
     <string-array name="byte_units">
         <item>Б</item>
         <item>КБ</item>
@@ -149,13 +150,13 @@
     <string name="action_ping_all">Проверить задержку</string>
     <string name="empty_title">Здесь пока пусто</string>
     <string name="empty_hint">Добавьте ссылку на подписку или вставьте ключ из буфера обмена. Поддерживаются VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, AmneziaWG.</string>
-    <string name="subscription_connections">Подключений: %1$d</string>
     <string name="subscription_updated">Обновлено %1$s</string>
-    <string name="subscription_auto_update">Авто · %1$d ч</string>
+    <string name="ago_just_now">только что</string>
+    <string name="ago_seconds">%1$d сек. назад</string>
     <string name="subscription_days_left">осталось %1$d дн.</string>
     <string name="subscription_expired">Истекла</string>
     <string name="subscription_support">Поддержка</string>
-    <string name="subscription_website">Сайт</string>
+    <string name="subscription_bot">Бот</string>
     <string name="subscription_rename">Переименовать</string>
     <string name="subscription_copy_link">Скопировать ссылку</string>
     <string name="subscription_link_copied">Ссылка скопирована</string>
@@ -224,6 +225,7 @@
     <string name="detail_json_title">Данные JSON</string>
     <string name="detail_json_hint">Полная конфигурация из подписки в том виде, в котором она была получена. Удерживайте текст, чтобы выделить и скопировать.</string>
     <string name="subscription_updated_ok">Подписка успешно обновлена</string>
+    <string name="subscription_import_success">✅ Подписка успешно импортирована</string>
     <string name="action_copy">Копировать</string>
     <string name="config_copied">Конфиг скопирован</string>
     <string name="json_copied">JSON скопирован</string>
@@ -274,6 +276,7 @@
     <string name="settings_language_auto">Авто</string>
     <string name="sub_ua_value">Значение</string>
     <string name="sub_auto_hint">Раз в час</string>
+    <string name="sub_auto_hint_hours">Раз в %1$d ч.</string>
     <string name="subscription_updating">Обновление…</string>
     <string name="settings_section_diagnostics">Диагностика</string>
     <string name="settings_logs_open">Просмотр логов</string>
@@ -288,4 +291,7 @@
     <string name="interface_plain">Обычный</string>
     <string name="interface_glass">Жидкое стекло</string>
     <string name="interface_hint">«Обычный» плоский и нетребовательный: выберите его, если приложение тормозит на вашем устройстве.</string>
+    <string name="settings_section_theme">Тема</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
 </resources>

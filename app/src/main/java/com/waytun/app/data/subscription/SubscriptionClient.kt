@@ -29,7 +29,9 @@ data class SubscriptionResponse(
     /** Happ's "description": `profile-description`, or the lines after the first in a multi-line `base64:` title. */
     val description: String? = null,
     val announceUrl: String? = null,
-    val supportEmail: String? = null
+    val supportEmail: String? = null,
+    /** Custom `bot-link` header: a dedicated bot/chat link, separate from `support-url`. */
+    val botLink: String? = null
 )
 
 /** Per-subscription request options from its settings screen. */
@@ -103,7 +105,8 @@ class SubscriptionClient @Inject constructor(
                 description = header("profile-description")?.let(::decodeTitle)
                     ?: titleText?.lines()?.drop(1)?.joinToString("\n")?.trim()?.ifEmpty { null },
                 announceUrl = header("announce-url") ?: meta["announce-url"],
-                supportEmail = header("support-email")
+                supportEmail = header("support-email"),
+                botLink = header("bot-link") ?: meta["bot-link"]
             )
         } finally {
             connection.disconnect()
@@ -136,7 +139,7 @@ class SubscriptionClient @Inject constructor(
 
     companion object {
         private val BODY_KEYS = setOf(
-            "announce", "profile-title", "support-url", "profile-web-page-url", "announce-url", "profile-update-interval"
+            "announce", "profile-title", "support-url", "profile-web-page-url", "announce-url", "profile-update-interval", "bot-link"
         )
         private val EXPLICIT_FORMAT_PATH = Regex("^(/api)?(/sub)?/[^/.]+/?$")
         private const val FALLBACK_USER_AGENT = "v2rayNG/1.10.5"

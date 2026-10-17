@@ -26,7 +26,7 @@ interface SubscriptionDao {
             "downloadBytes = :download, totalBytes = :total, expireEpochSeconds = :expire, " +
             "updateIntervalHours = :intervalHours, announce = :announce, supportUrl = :supportUrl, " +
             "webPageUrl = :webPageUrl, description = :description, announceUrl = :announceUrl, " +
-            "supportEmail = :supportEmail WHERE id = :id"
+            "supportEmail = :supportEmail, botLink = :botLink WHERE id = :id"
     )
     suspend fun updateMetadata(
         id: String,
@@ -42,7 +42,8 @@ interface SubscriptionDao {
         webPageUrl: String?,
         description: String?,
         announceUrl: String?,
-        supportEmail: String?
+        supportEmail: String?,
+        botLink: String?
     )
 
     @Query("SELECT * FROM subscriptions WHERE id = :id LIMIT 1")

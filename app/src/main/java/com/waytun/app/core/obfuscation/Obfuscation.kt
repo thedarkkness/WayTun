@@ -11,7 +11,7 @@ enum class ObfuscationLevel { LIGHT, MEDIUM, STRONG }
  * Hysteria2's salamander etc. must be configured on both ends, so they stay in the tunnel config.)
  */
 data class ObfuscationSettings(
-    val enabled: Boolean = true,
+    val enabled: Boolean = false,
     val level: ObfuscationLevel = ObfuscationLevel.LIGHT,
     /** Split the TLS ClientHello across packets/records at random points (defeats SNI matching by DPI). */
     val tlsFragmentation: Boolean = true,
@@ -33,7 +33,7 @@ data class ObfuscationSettings(
      * Reject UDP/443 so YouTube and browsers fall back from QUIC to TCP. HTTP/3 inside a QUIC tunnel
      * (Hysteria2/TUIC) is QUIC-in-QUIC: it works but stutters badly, while plain HTTPS over the tunnel is smooth.
      */
-    val blockQuic: Boolean = true
+    val blockQuic: Boolean = false
 ) {
     fun toJson(): String = JSONObject()
         .put("enabled", enabled).put("level", level.name)

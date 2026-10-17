@@ -33,6 +33,11 @@ object AppLanguage {
     fun current(context: Context): String = storedTag(context) ?: AUTO
 
     fun set(activity: Activity, tag: String) {
+        // On every path the platform ends up fully recreating the Activity for a per-app locale change -
+        // `configChanges="locale"` only covers the system's own locale switch, not this one - so without a
+        // custom transition the stock window teardown/rebuild shows as a stark black flash. A fade swap reads
+        // as an intentional change instead.
+        fadeTransition(activity)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             activity.getSystemService(LocaleManager::class.java).applicationLocales =
                 if (tag == AUTO) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
@@ -40,6 +45,20 @@ object AppLanguage {
             prefs(activity).edit().apply { if (tag == AUTO) remove(KEY_TAG) else putString(KEY_TAG, tag) }.apply()
             // No platform per-app locales before Android 13: the new base context needs a fresh activity.
             activity.recreate()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun fadeTransition(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            activity.overrideActivityTransition(
+                Activity.OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out
+            )
+            activity.overrideActivityTransition(
+                Activity.OVERRIDE_TRANSITION_CLOSE, android.R.anim.fade_in, android.R.anim.fade_out
+            )
+        } else {
+            activity.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
     }
 
