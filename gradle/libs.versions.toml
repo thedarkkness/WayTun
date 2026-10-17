@@ -22,6 +22,7 @@ cameraX = "1.6.2"
 mlkitBarcodeScanning = "17.3.0"
 zxing = "3.5.4"
 haze = "1.7.3"
+robolectric = "4.17"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -65,6 +66,7 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 [plugins]
