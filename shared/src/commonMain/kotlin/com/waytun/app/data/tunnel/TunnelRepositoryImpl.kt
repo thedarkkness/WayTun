@@ -2,20 +2,24 @@ package com.waytun.app.data.tunnel
 
 import com.waytun.app.core.crypto.ConfigCipher
 import com.waytun.app.core.crypto.EncryptedConfig
-import com.waytun.app.core.parser.ConfDescriber
 import com.waytun.app.core.parser.TunnelDescriptor
 import com.waytun.app.core.parser.TunnelProtocol
-import java.nio.charset.StandardCharsets
-import java.util.UUID
-import javax.inject.Inject
+import com.waytun.app.core.time.nowMillis
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
-class TunnelRepositoryImpl @Inject constructor(
+/**
+ * [describeConf] labels wg-quick/awg-quick `.conf` text (see [TunnelDescriptor.describe]); it comes from the platform
+ * because parsing those formats is done by the WireGuard/AmneziaWG libraries each platform bundles.
+ */
+class TunnelRepositoryImpl(
     private val dao: TunnelDao,
-    private val cipher: ConfigCipher
+    private val cipher: ConfigCipher,
+    private val describeConf: (String) -> String?
 ) : TunnelRepository {
 
     override fun observeTunnels(): Flow<List<TunnelSummary>> =
@@ -38,18 +42,18 @@ class TunnelRepositoryImpl @Inject constructor(
         rawConfigText: String
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
-            val encrypted = cipher.encrypt(rawConfigText.toByteArray(StandardCharsets.UTF_8))
-            val id = UUID.randomUUID().toString()
+            val encrypted = cipher.encrypt(rawConfigText.encodeToByteArray())
+            val id = Uuid.random().toString()
             dao.insert(
                 TunnelEntity(
                     id = id,
                     name = name,
                     protocol = protocol.name,
                     sortOrder = dao.count(),
-                    createdAtEpochMillis = System.currentTimeMillis(),
+                    createdAtEpochMillis = nowMillis(),
                     encryptedConfig = encrypted.ciphertext,
                     configIv = encrypted.iv,
-                    details = TunnelDescriptor.describe(rawConfigText, ConfDescriber::describe)
+                    details = TunnelDescriptor.describe(rawConfigText, describeConf)
                 )
             )
             id
@@ -61,7 +65,7 @@ class TunnelRepositoryImpl @Inject constructor(
             runCatching {
                 val entity = dao.getById(id) ?: error("Tunnel not found")
                 val decrypted = cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv))
-                String(decrypted, StandardCharsets.UTF_8)
+                decrypted.decodeToString()
             }
         }
 
@@ -74,7 +78,7 @@ class TunnelRepositoryImpl @Inject constructor(
                     id = entity.id,
                     name = entity.name,
                     protocol = TunnelProtocol.valueOf(entity.protocol),
-                    rawConfigText = String(decrypted, StandardCharsets.UTF_8)
+                    rawConfigText = decrypted.decodeToString()
                 )
             }
         }
@@ -86,8 +90,8 @@ class TunnelRepositoryImpl @Inject constructor(
         rawConfigText: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val encrypted = cipher.encrypt(rawConfigText.toByteArray(StandardCharsets.UTF_8))
-            dao.update(id, name, protocol.name, encrypted.ciphertext, encrypted.iv, TunnelDescriptor.describe(rawConfigText, ConfDescriber::describe))
+            val encrypted = cipher.encrypt(rawConfigText.encodeToByteArray())
+            dao.update(id, name, protocol.name, encrypted.ciphertext, encrypted.iv, TunnelDescriptor.describe(rawConfigText, describeConf))
         }
     }
 
@@ -99,9 +103,9 @@ class TunnelRepositoryImpl @Inject constructor(
     override suspend fun backfillDetails() = withContext(Dispatchers.IO) {
         dao.getWithoutDetails().forEach { entity ->
             runCatching {
-                val raw = String(cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv)), StandardCharsets.UTF_8)
+                val raw = cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv)).decodeToString()
                 // Empty string (not null) for configs that don't parse, so they aren't retried forever.
-                dao.updateDetails(entity.id, TunnelDescriptor.describe(raw, ConfDescriber::describe) ?: "")
+                dao.updateDetails(entity.id, TunnelDescriptor.describe(raw, describeConf) ?: "")
             }
         }
     }
