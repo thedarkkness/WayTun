@@ -1,8 +1,5 @@
 package com.waytun.app.vpn.session
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -13,7 +10,6 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Tells whether traffic really flows *through* the tunnel right now.
@@ -63,15 +59,4 @@ object TunnelHealthProbe {
             connection.disconnect()
         }
     }.getOrDefault(false)
-
-    /** Whether any non-VPN network with internet access exists (reconnecting is pointless without one). */
-    suspend fun hasUnderlyingNetwork(context: Context): Boolean = withContext(Dispatchers.Default) {
-        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return@withContext true
-        cm.allNetworks.any { network ->
-            val caps = cm.getNetworkCapabilities(network)
-            caps != null &&
-                !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        }
-    }
 }

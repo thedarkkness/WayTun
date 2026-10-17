@@ -1,9 +1,12 @@
 package com.waytun.app.update
 
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import org.json.JSONObject
+import com.waytun.app.core.json.JSONObject
+import com.waytun.app.core.net.SharedHttp
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsBytes
+import kotlinx.coroutines.CancellationException
 
 data class ReleaseInfo(
     val version: String,
@@ -22,29 +25,24 @@ sealed interface ReleaseCheckResult {
 object GitHubReleaseApi {
     private const val LATEST_RELEASE_URL = "https://api.github.com/repos/thedarkkness/WayTun/releases/latest"
 
-    fun fetchLatest(): ReleaseCheckResult {
-        var connection: HttpURLConnection? = null
-        return try {
-            connection = (URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                setRequestProperty("Accept", "application/vnd.github+json")
-                setRequestProperty("User-Agent", "WayTun-Android")
-                connectTimeout = 10_000
-                readTimeout = 10_000
+    suspend fun fetchLatest(http: HttpClient = SharedHttp.client, userAgent: String = "WayTun-Android"): ReleaseCheckResult = try {
+        val response = http.get(LATEST_RELEASE_URL) {
+            timeout {
+                connectTimeoutMillis = 10_000
+                socketTimeoutMillis = 10_000
             }
-            when (connection.responseCode) {
-                404 -> ReleaseCheckResult.NoReleasesYet
-                in 200..299 -> {
-                    val body = connection.inputStream.bufferedReader().use { it.readText() }
-                    ReleaseCheckResult.Success(parseRelease(body))
-                }
-                else -> ReleaseCheckResult.Failure("HTTP ${connection.responseCode}")
-            }
-        } catch (e: IOException) {
-            ReleaseCheckResult.Failure(e.message ?: "IO error")
-        } finally {
-            connection?.disconnect()
+            headers["Accept"] = "application/vnd.github+json"
+            headers["User-Agent"] = userAgent
         }
+        when (val code = response.status.value) {
+            404 -> ReleaseCheckResult.NoReleasesYet
+            in 200..299 -> ReleaseCheckResult.Success(parseRelease(response.bodyAsBytes().decodeToString()))
+            else -> ReleaseCheckResult.Failure("HTTP $code")
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        ReleaseCheckResult.Failure(e.message ?: "IO error")
     }
 
     private fun parseRelease(body: String): ReleaseInfo {
@@ -56,7 +54,7 @@ object GitHubReleaseApi {
         val assets = json.optJSONArray("assets")
         if (assets != null) {
             for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
+                val asset = assets.optJSONObject(i) ?: continue
                 val name = asset.getString("name")
                 if (name.endsWith(".apk", ignoreCase = true)) {
                     apkUrl = asset.getString("browser_download_url")

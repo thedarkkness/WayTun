@@ -37,7 +37,7 @@ kotlin {
         commonMain.dependencies {
             api(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.ktor.client.core)
+            api(libs.ktor.client.core)
             api(libs.androidx.room.runtime)
             implementation(libs.koin.core)
         }

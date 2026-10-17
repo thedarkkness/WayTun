@@ -73,7 +73,7 @@ fun LogsScreen(onBack: () -> Unit) {
     var open by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     val files by produceState(emptyList<LogFileInfo>(), reload, open) {
-        value = withContext(Dispatchers.IO) { AppLog.files(context) }
+        value = withContext(Dispatchers.IO) { AppLog.files() }
     }
     val snackbar = remember { SnackbarHostState() }
     val copiedText = stringResource(R.string.logs_copied)
@@ -84,7 +84,7 @@ fun LogsScreen(onBack: () -> Unit) {
 
     val text by produceState("", open, reload) {
         val name = open
-        value = if (name == null) "" else withContext(Dispatchers.IO) { AppLog.read(context, name) }
+        value = if (name == null) "" else withContext(Dispatchers.IO) { AppLog.read(name) }
     }
 
     GlassScaffold(
@@ -103,7 +103,7 @@ fun LogsScreen(onBack: () -> Unit) {
                 IconButton(onClick = {
                     open?.let { name ->
                         scope.launch {
-                            withContext(Dispatchers.IO) { AppLog.clear(context, name) }
+                            withContext(Dispatchers.IO) { AppLog.clear(name) }
                             reload++
                         }
                     }

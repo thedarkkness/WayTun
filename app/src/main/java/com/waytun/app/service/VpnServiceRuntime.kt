@@ -11,6 +11,7 @@ import com.waytun.app.notification.VpnNotificationFactory
 import com.waytun.app.vpn.TunnelState
 import com.waytun.app.vpn.VpnBackend
 import com.waytun.app.vpn.remote.VpnStatePublisher
+import com.waytun.app.vpn.session.AndroidNetworkProbe
 import com.waytun.app.vpn.session.TunnelSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -53,7 +54,6 @@ class VpnServiceRuntime(
     private val notification = TunnelNotificationController(service, notificationFactory, scope, disconnectAction, backend::stats)
 
     private val session = TunnelSession(
-        context = service,
         scope = scope,
         backend = backend,
         loadConfig = { id -> tunnelRepository.getDecryptedConfigText(id).getOrNull() },
@@ -75,7 +75,8 @@ class VpnServiceRuntime(
                     service.stopSelf()
                 }
             }
-        }
+        },
+        network = AndroidNetworkProbe(service)
     )
 
     private val publisher = VpnStatePublisher(scope, backend, session.reconnectingTunnelId)

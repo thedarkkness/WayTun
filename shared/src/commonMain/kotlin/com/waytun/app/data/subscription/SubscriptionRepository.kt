@@ -1,8 +1,5 @@
 package com.waytun.app.data.subscription
 
-import androidx.room.withTransaction
-import android.util.Log
-import com.waytun.app.BuildConfig
 import com.waytun.app.core.crypto.ConfigCipher
 import com.waytun.app.core.log.AppLog
 import com.waytun.app.core.crypto.EncryptedConfig
@@ -10,13 +7,13 @@ import com.waytun.app.core.parser.ShareLinkList
 import com.waytun.app.core.parser.SingBoxLinkParser
 import com.waytun.app.core.parser.TunnelDescriptor
 import com.waytun.app.data.tunnel.AppDatabase
+import com.waytun.app.data.tunnel.inTransaction
+import com.waytun.app.core.log.PlatformLog
+import com.waytun.app.core.time.nowMillis
+import kotlin.uuid.Uuid
+import kotlinx.coroutines.IO
 import com.waytun.app.data.tunnel.TunnelDao
 import com.waytun.app.data.tunnel.TunnelEntity
-import java.net.URI
-import java.nio.charset.StandardCharsets
-import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -73,8 +70,7 @@ class SubscriptionEmptyException : Exception("The subscription has no supported 
 private const val DEFAULT_UPDATE_INTERVAL_HOURS = 1
 private const val MILLIS_PER_HOUR = 3_600_000L
 
-@Singleton
-class SubscriptionRepository @Inject constructor(
+class SubscriptionRepository(
     private val database: AppDatabase,
     private val subscriptionDao: SubscriptionDao,
     private val tunnelDao: TunnelDao,
@@ -133,7 +129,7 @@ class SubscriptionRepository @Inject constructor(
 
     suspend fun add(url: String): Result<SubscriptionSyncResult> = addInternal(url).also { result ->
         result.onSuccess { AppLog.log(AppLog.SUBSCRIPTION, "added a subscription: ${it.imported} keys, ${it.skipped} skipped") }
-            .onFailure { AppLog.log(AppLog.SUBSCRIPTION, "adding a subscription failed: ${it.javaClass.simpleName}: ${it.message}") }
+            .onFailure { AppLog.log(AppLog.SUBSCRIPTION, "adding a subscription failed: ${it::class.simpleName}: ${it.message}") }
     }
 
     private suspend fun addInternal(url: String): Result<SubscriptionSyncResult> = withContext(Dispatchers.IO) {
@@ -141,10 +137,10 @@ class SubscriptionRepository @Inject constructor(
             val response = client.fetch(url)
             val links = ShareLinkList.extract(response.body)
             if (links.isEmpty()) throw SubscriptionEmptyException()
-            val encryptedUrl = cipher.encrypt(url.toByteArray(StandardCharsets.UTF_8))
-            val now = System.currentTimeMillis()
-            val id = UUID.randomUUID().toString()
-            database.withTransaction {
+            val encryptedUrl = cipher.encrypt(url.encodeToByteArray())
+            val now = nowMillis()
+            val id = Uuid.random().toString()
+            database.inTransaction {
                 subscriptionDao.insert(
                     SubscriptionEntity(
                         id = id,
@@ -181,7 +177,7 @@ class SubscriptionRepository @Inject constructor(
         val name = subscriptionDao.getById(id)?.name ?: "subscription"
         return refreshInternal(id, keepTunnelIds).also { result ->
             result.onSuccess { AppLog.log(AppLog.SUBSCRIPTION, "updated '$name': ${it.imported} keys, ${it.skipped} skipped") }
-                .onFailure { AppLog.log(AppLog.SUBSCRIPTION, "update of '$name' failed: ${it.javaClass.simpleName}: ${it.message}") }
+                .onFailure { AppLog.log(AppLog.SUBSCRIPTION, "update of '$name' failed: ${it::class.simpleName}: ${it.message}") }
         }
     }
 
@@ -189,15 +185,15 @@ class SubscriptionRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val entity = subscriptionDao.getById(id) ?: error("Subscription not found")
-                val url = String(cipher.decrypt(EncryptedConfig(entity.encryptedUrl, entity.urlIv)), StandardCharsets.UTF_8)
+                val url = cipher.decrypt(EncryptedConfig(entity.encryptedUrl, entity.urlIv)).decodeToString()
                 val response = client.fetch(url, entity.fetchOptions())
                 val links = ShareLinkList.extract(response.body)
                 if (links.isEmpty()) throw SubscriptionEmptyException()
-                val imported = database.withTransaction {
+                val imported = database.inTransaction {
                     subscriptionDao.updateMetadata(
                         id = id,
                         name = response.title ?: entity.name,
-                        updatedAt = System.currentTimeMillis(),
+                        updatedAt = nowMillis(),
                         upload = response.usage?.uploadBytes,
                         download = response.usage?.downloadBytes,
                         total = response.usage?.totalBytes,
@@ -223,7 +219,7 @@ class SubscriptionRepository @Inject constructor(
      * the panel's `profile-update-interval` header says - the app never offers its own value to override it with.
      */
     suspend fun refreshStale(keepTunnelIds: Set<String>, onOpen: Boolean = false) {
-        val now = System.currentTimeMillis()
+        val now = nowMillis()
         subscriptionDao.getAll()
             .filter { entity ->
                 (onOpen && entity.updateOnOpen) ||
@@ -244,13 +240,13 @@ class SubscriptionRepository @Inject constructor(
     suspend fun getUrl(id: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val entity = subscriptionDao.getById(id) ?: error("Subscription not found")
-            String(cipher.decrypt(EncryptedConfig(entity.encryptedUrl, entity.urlIv)), StandardCharsets.UTF_8)
+            cipher.decrypt(EncryptedConfig(entity.encryptedUrl, entity.urlIv)).decodeToString()
         }
     }
 
     suspend fun delete(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            database.withTransaction {
+            database.inTransaction {
                 tunnelDao.deleteBySubscription(id)
                 subscriptionDao.deleteById(id)
             }
@@ -261,14 +257,14 @@ class SubscriptionRepository @Inject constructor(
     private suspend fun syncTunnels(subscriptionId: String, links: List<String>, keepTunnelIds: Set<String>): Int {
         val existing = tunnelDao.getBySubscription(subscriptionId)
         val existingByConfig = existing.groupBy { entity ->
-            String(cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv)), StandardCharsets.UTF_8)
+            cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv)).decodeToString()
         }.mapValues { (_, entities) -> entities.toMutableList() }
         val kept = mutableSetOf<String>()
         var imported = 0
         links.forEachIndexed { index, link ->
             val parsed = SingBoxLinkParser.parse(link)
             if (parsed == null) {
-                if (BuildConfig.DEBUG) Log.w("Subscription", "skipped entry #$index: scheme=${link.substringBefore("://", "?")} length=${link.length}")
+                PlatformLog.d("Subscription", "skipped entry #$index: scheme=${link.substringBefore("://", "?")} length=${link.length}")
                 return@forEachIndexed
             }
             val reused = existingByConfig[link]?.removeFirstOrNull()
@@ -276,14 +272,14 @@ class SubscriptionRepository @Inject constructor(
                 tunnelDao.updateNameAndOrder(reused.id, parsed.remark, index)
                 kept += reused.id
             } else {
-                val encrypted = cipher.encrypt(link.toByteArray(StandardCharsets.UTF_8))
+                val encrypted = cipher.encrypt(link.encodeToByteArray())
                 tunnelDao.insert(
                     TunnelEntity(
-                        id = UUID.randomUUID().toString(),
+                        id = Uuid.random().toString(),
                         name = parsed.remark,
                         protocol = parsed.protocol.name,
                         sortOrder = index,
-                        createdAtEpochMillis = System.currentTimeMillis(),
+                        createdAtEpochMillis = nowMillis(),
                         encryptedConfig = encrypted.ciphertext,
                         configIv = encrypted.iv,
                         subscriptionId = subscriptionId,
@@ -297,7 +293,12 @@ class SubscriptionRepository @Inject constructor(
         return imported
     }
 
-    private fun hostOf(url: String): String = runCatching { URI(url).host }.getOrNull() ?: url
+    /** java.net.URI(url).host, or the whole url when there is none. */
+    private fun hostOf(url: String): String {
+        val authority = url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringBefore('#')
+        val host = authority.substringAfterLast('@').let { if (it.startsWith("[")) it.substringBefore(']') + "]" else it.substringBefore(':') }
+        return host.ifEmpty { url }
+    }
 
     private fun SubscriptionUsage.hasAnyValue() =
         uploadBytes != null || downloadBytes != null || totalBytes != null || expireEpochSeconds != null

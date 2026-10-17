@@ -1,14 +1,12 @@
 package com.waytun.app.data.subscription
 
-import android.content.Context
-import android.util.Base64
-import com.waytun.app.core.device.DeviceIdentity
 import com.waytun.app.core.parser.JsonSubscription
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import javax.inject.Inject
+import com.waytun.app.core.text.Base64
+import com.waytun.app.core.text.UrlCoding
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsBytes
 
 /** Panel-provided usage info from the `subscription-userinfo` header. */
 data class SubscriptionUsage(
@@ -41,17 +39,33 @@ data class FetchOptions(
     val timeoutSeconds: Int = 15
 )
 
+/** A non-2xx answer from the panel; the message ("HTTP 404") is what the user sees. */
+class SubscriptionHttpException(message: String) : Exception(message)
+
 /**
  * Downloads a subscription the way Happ does: always sending the HWID/device headers panels use
  * for device counting and limits, and reading the panel's metadata headers back.
+ *
+ * [deviceHeaders] are the platform's User-Agent and `x-hwid`/`x-device-os`/`x-ver-os`/`x-device-model` values.
  */
-class SubscriptionClient @Inject constructor(
-    @param:ApplicationContext private val context: Context
+class SubscriptionClient(
+    private val http: HttpClient,
+    private val deviceHeaders: () -> Map<String, String>
 ) {
 
-    /** Blocking - call off the main thread. */
-    fun fetch(url: String, options: FetchOptions = FetchOptions()): SubscriptionResponse {
-        var headers = DeviceIdentity.subscriptionHeaders(context)
+    suspend fun fetch(url: String, options: FetchOptions = FetchOptions()): SubscriptionResponse = try {
+        fetchInternal(url, options)
+    } catch (e: SubscriptionHttpException) {
+        throw e
+    } catch (e: Exception) {
+        // Some network errors quote the whole request URL, and a subscription URL carries the user's access token:
+        // keep it out of messages that end up on screen.
+        val message = e.message
+        if (message != null && message.contains(url.substringBefore('?'))) throw SubscriptionNetworkException(redact(message, url), e) else throw e
+    }
+
+    private suspend fun fetchInternal(url: String, options: FetchOptions): SubscriptionResponse {
+        var headers = deviceHeaders()
         if (!options.sendHwid) headers = headers - setOf("x-hwid", "x-device-os", "x-ver-os", "x-device-model")
         options.userAgent?.takeIf { it.isNotBlank() }?.let { headers = headers + ("User-Agent" to it) }
         val timeoutMs = options.timeoutSeconds.coerceIn(5, 15) * 1000
@@ -66,7 +80,7 @@ class SubscriptionClient @Inject constructor(
         // instead of pretending to be another app.
         val bare = url.substringBefore('?')
         val query = url.substringAfter('?', "").let { if (it.isEmpty()) "" else "?$it" }
-        if (!JsonSubscription.looksLikeJson(response.body) && EXPLICIT_FORMAT_PATH.containsMatchIn(java.net.URL(url).path)) {
+        if (!JsonSubscription.looksLikeJson(response.body) && EXPLICIT_FORMAT_PATH.containsMatchIn(pathOf(url))) {
             for (clientType in listOf("json", "v2ray-json")) {
                 val explicit = runCatching { request(bare.trimEnd('/') + "/" + clientType + query, headers, timeoutMs) }.getOrNull()
                     ?.takeIf { JsonSubscription.looksLikeJson(it.body) && JsonSubscription.countEntries(it.body) > 0 }
@@ -77,40 +91,51 @@ class SubscriptionClient @Inject constructor(
         return response
     }
 
-    private fun request(url: String, headers: Map<String, String>, timeoutMs: Int): SubscriptionResponse {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = timeoutMs
-            connection.readTimeout = timeoutMs
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("Accept", "*/*")
-            headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
-            val code = connection.responseCode
-            if (code !in 200..299) throw IOException("HTTP $code")
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val meta = bodyMetadata(body)
-            fun header(name: String) = connection.getHeaderField(name)?.trim()?.ifEmpty { null }
-            // Headers win over the `#key: value` lines panels can put at the top of the body.
-            val rawTitle = header("profile-title") ?: header("subscription-name") ?: meta["profile-title"]
-                ?: header("content-disposition")?.let(::filenameOf)
-            val titleText = rawTitle?.let(::decodeTitle)
-            return SubscriptionResponse(
-                body = body,
-                title = titleText?.lineSequence()?.firstOrNull()?.trim()?.ifEmpty { null },
-                usage = header("subscription-userinfo")?.let(::parseUsage),
-                updateIntervalHours = (header("profile-update-interval") ?: meta["profile-update-interval"])?.toIntOrNull(),
-                announce = (header("announce") ?: meta["announce"])?.let(::decodeTitle),
-                supportUrl = header("support-url") ?: meta["support-url"],
-                webPageUrl = header("profile-web-page-url") ?: meta["profile-web-page-url"] ?: header("homepage"),
-                description = header("profile-description")?.let(::decodeTitle)
-                    ?: titleText?.lines()?.drop(1)?.joinToString("\n")?.trim()?.ifEmpty { null },
-                announceUrl = header("announce-url") ?: meta["announce-url"],
-                supportEmail = header("support-email"),
-                botLink = header("bot-link") ?: meta["bot-link"]
-            )
-        } finally {
-            connection.disconnect()
+    private suspend fun request(url: String, headers: Map<String, String>, timeoutMs: Int): SubscriptionResponse {
+        val answer = http.get(url) {
+            timeout {
+                connectTimeoutMillis = timeoutMs.toLong()
+                socketTimeoutMillis = timeoutMs.toLong()
+            }
+            this.headers["Accept"] = "*/*"
+            headers.forEach { (name, value) -> this.headers[name] = value }
         }
+        val code = answer.status.value
+        if (code !in 200..299) throw SubscriptionHttpException("HTTP $code")
+        val body = answer.bodyAsBytes().decodeToString()
+        val meta = bodyMetadata(body)
+        // Like HttpURLConnection.getHeaderField: the last value of a repeated header.
+        fun header(name: String) = answer.headers.getAll(name)?.lastOrNull()?.trim()?.ifEmpty { null }
+        // Headers win over the `#key: value` lines panels can put at the top of the body.
+        val rawTitle = header("profile-title") ?: header("subscription-name") ?: meta["profile-title"]
+            ?: header("content-disposition")?.let(::filenameOf)
+        val titleText = rawTitle?.let(::decodeTitle)
+        return SubscriptionResponse(
+            body = body,
+            title = titleText?.lineSequence()?.firstOrNull()?.trim()?.ifEmpty { null },
+            usage = header("subscription-userinfo")?.let(::parseUsage),
+            updateIntervalHours = (header("profile-update-interval") ?: meta["profile-update-interval"])?.toIntOrNull(),
+            announce = (header("announce") ?: meta["announce"])?.let(::decodeTitle),
+            supportUrl = header("support-url") ?: meta["support-url"],
+            webPageUrl = header("profile-web-page-url") ?: meta["profile-web-page-url"] ?: header("homepage"),
+            description = header("profile-description")?.let(::decodeTitle)
+                ?: titleText?.lines()?.drop(1)?.joinToString("\n")?.trim()?.ifEmpty { null },
+            announceUrl = header("announce-url") ?: meta["announce-url"],
+            supportEmail = header("support-email"),
+            botLink = header("bot-link") ?: meta["bot-link"]
+        )
+    }
+
+    /** java.net.URL.getPath(): the part after the authority, without query or fragment. */
+    private fun pathOf(url: String): String {
+        val rest = url.substringAfter("://", url)
+        val slash = rest.indexOf('/')
+        return if (slash < 0) "" else rest.substring(slash).substringBefore('?').substringBefore('#')
+    }
+
+    private fun redact(message: String, url: String): String {
+        val host = url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringAfterLast('@')
+        return message.replace(url, host).replace(url.substringBefore('?'), host)
     }
 
     private fun String.looksLikeHtml(): Boolean {
@@ -127,14 +152,14 @@ class SubscriptionClient @Inject constructor(
             if (!trimmed.startsWith("#")) continue
             val key = trimmed.removePrefix("#").substringBefore(':').trim().lowercase()
             val value = trimmed.substringAfter(':', "").trim()
-            if (key in BODY_KEYS && value.isNotEmpty()) result.putIfAbsent(key, value)
+            if (key in BODY_KEYS && value.isNotEmpty() && key !in result) result[key] = value
         }
         return result
     }
 
     private fun filenameOf(disposition: String): String? =
         Regex("filename\\*?=(?:UTF-8'')?\"?([^\";]+)\"?", RegexOption.IGNORE_CASE).find(disposition)?.groupValues?.get(1)
-            ?.let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }
+            ?.let { runCatching { UrlCoding.decode(it) }.getOrDefault(it) }
             ?.removeSuffix(".txt")?.removeSuffix(".yaml")?.removeSuffix(".yml")?.trim()?.ifEmpty { null }
 
     companion object {
@@ -150,7 +175,7 @@ class SubscriptionClient @Inject constructor(
             if (value.isEmpty()) return null
             if (!value.startsWith("base64:", ignoreCase = true)) return value
             return runCatching {
-                String(Base64.decode(value.substringAfter(':'), Base64.DEFAULT), Charsets.UTF_8).trim()
+                Base64.decode(value.substringAfter(':'), Base64.DEFAULT).decodeToString().trim()
             }.getOrNull()?.ifEmpty { null }
         }
 
@@ -172,3 +197,6 @@ class SubscriptionClient @Inject constructor(
         }
     }
 }
+
+/** A network failure whose original message quoted the subscription URL; the URL is replaced by its host. */
+class SubscriptionNetworkException(message: String, cause: Throwable) : Exception(message, cause)

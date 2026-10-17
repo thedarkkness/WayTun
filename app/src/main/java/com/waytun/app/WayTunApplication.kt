@@ -1,6 +1,8 @@
 package com.waytun.app
 
 import android.app.Application
+import com.waytun.app.core.log.AppLog
+import com.waytun.app.core.log.init
 import com.waytun.app.core.obfuscation.ObfuscationManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -13,7 +15,7 @@ class WayTunApplication : Application() {
     override fun onCreate() {
         com.waytun.app.core.log.LogcatSink.install()
         super.onCreate()
-        com.waytun.app.core.log.AppLog.init(this)
+        AppLog.init(this)
         com.waytun.app.ui.theme.InterfaceStyleStore.init(this)
         com.waytun.app.ui.theme.AppThemeStore.init(this)
         // Each VPN service runs in its own process and creates its own Application; only the UI

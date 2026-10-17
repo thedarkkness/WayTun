@@ -1,10 +1,9 @@
 package com.waytun.app.core.obfuscation
 
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-import javax.inject.Singleton
+import com.waytun.app.core.prefs.KeyValueStore
+import com.waytun.app.core.time.nowMillis
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,35 +19,31 @@ import kotlinx.coroutines.launch
  * connection always starts with the then-current one, and the VPN service generates further ones
  * itself whenever it has to reconnect.
  */
-@Singleton
-class ObfuscationManager @Inject constructor(
-    @ApplicationContext context: Context
-) {
-    private val prefs = context.getSharedPreferences("obfuscation", Context.MODE_PRIVATE)
+class ObfuscationManager(private val prefs: KeyValueStore) {
 
     init {
         // The defaults changed (obfuscation and QUIC blocking now start off, for stability on devices
         // whose networks handle the extra packet shaping badly): bring existing installs to them once.
         if (prefs.getInt(KEY_DEFAULTS_VERSION, 0) < DEFAULTS_VERSION) {
-            prefs.edit().remove(KEY_SETTINGS).remove(KEY_PROFILE).putInt(KEY_DEFAULTS_VERSION, DEFAULTS_VERSION).apply()
+            prefs.edit { remove(KEY_SETTINGS); remove(KEY_PROFILE); putInt(KEY_DEFAULTS_VERSION, DEFAULTS_VERSION) }
         }
     }
 
-    private val _settings = MutableStateFlow(ObfuscationSettings.fromJson(prefs.getString(KEY_SETTINGS, null)))
+    private val _settings = MutableStateFlow(ObfuscationSettings.fromJson(prefs.getString(KEY_SETTINGS)))
     val settings: StateFlow<ObfuscationSettings> = _settings.asStateFlow()
 
     private val _profile = MutableStateFlow(
-        ObfuscationProfile.fromJson(prefs.getString(KEY_PROFILE, null)) ?: ObfuscationGenerator.generate(_settings.value)
+        ObfuscationProfile.fromJson(prefs.getString(KEY_PROFILE)) ?: ObfuscationGenerator.generate(_settings.value)
     )
     val profile: StateFlow<ObfuscationProfile> = _profile.asStateFlow()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private var started = false
+    @OptIn(ExperimentalAtomicApi::class)
+    private val started = AtomicBoolean(false)
 
-    @Synchronized
+    @OptIn(ExperimentalAtomicApi::class)
     fun start() {
-        if (started) return
-        started = true
+        if (!started.compareAndSet(expectedValue = false, newValue = true)) return
         scope.launch {
             while (true) {
                 delay(CHECK_INTERVAL_MS)
@@ -60,14 +55,14 @@ class ObfuscationManager @Inject constructor(
     fun update(transform: (ObfuscationSettings) -> ObfuscationSettings) {
         val updated = transform(_settings.value)
         _settings.value = updated
-        prefs.edit().putString(KEY_SETTINGS, updated.toJson()).apply()
+        prefs.edit { putString(KEY_SETTINGS, updated.toJson()) }
         rotateNow()
     }
 
     fun rotateNow() {
         val fresh = ObfuscationGenerator.generate(_settings.value)
         _profile.value = fresh
-        prefs.edit().putString(KEY_PROFILE, fresh.toJson()).apply()
+        prefs.edit { putString(KEY_PROFILE, fresh.toJson()) }
     }
 
     /** What a new connection should start with: null when obfuscation is off, otherwise values no older than the rotation interval. */
@@ -80,7 +75,7 @@ class ObfuscationManager @Inject constructor(
     private fun isDue(): Boolean {
         val s = _settings.value
         return s.enabled && s.autoRotate &&
-            System.currentTimeMillis() - _profile.value.generatedAtMillis >= TimeUnit.MINUTES.toMillis(ObfuscationSettings.ROTATE_INTERVAL_MINUTES)
+            nowMillis() - _profile.value.generatedAtMillis >= ObfuscationSettings.ROTATE_INTERVAL_MINUTES * 60_000L
     }
 
     private companion object {

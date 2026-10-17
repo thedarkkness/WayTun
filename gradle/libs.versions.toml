@@ -22,7 +22,6 @@ cameraX = "1.6.2"
 mlkitBarcodeScanning = "17.3.0"
 zxing = "3.5.4"
 haze = "1.7.3"
-robolectric = "4.17"
 coroutines = "1.10.2"
 serialization = "1.9.0"
 ktor = "3.3.0"
@@ -81,7 +80,6 @@ ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref =
 koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
 androidx-sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqlite" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
-robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 [plugins]
