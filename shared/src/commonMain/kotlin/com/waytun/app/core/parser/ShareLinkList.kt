@@ -1,6 +1,6 @@
 package com.waytun.app.core.parser
 
-import android.util.Base64
+import com.waytun.app.core.text.Base64
 
 /**
  * Pulls every supported share link (vless://, vmess://, trojan://) out of free-form text: one
@@ -31,7 +31,7 @@ object ShareLinkList {
     private fun decodeBase64(value: String): String? {
         val padded = value.padEnd(value.length + (4 - value.length % 4) % 4, '=')
         for (flags in intArrayOf(Base64.DEFAULT, Base64.URL_SAFE)) {
-            val decoded = runCatching { String(Base64.decode(padded, flags), Charsets.UTF_8) }.getOrNull()
+            val decoded = runCatching { Base64.decode(padded, flags).decodeToString() }.getOrNull()
             if (decoded != null && decoded.contains("://")) return decoded
         }
         return null

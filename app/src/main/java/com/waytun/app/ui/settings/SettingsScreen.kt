@@ -421,8 +421,11 @@ private fun ObfuscationSection(
                 val onText = stringResource(R.string.obf_value_on)
                 val offText = stringResource(R.string.obf_value_off)
                 ValueChip(stringResource(R.string.obf_value_fingerprint, profile.fingerprint ?: offText), Rose)
-                if (profile.awgJunkCount != null && profile.awgJunkMin != null && profile.awgJunkMax != null) {
-                    ValueChip(stringResource(R.string.obf_value_junk, profile.awgJunkCount, profile.awgJunkMin, profile.awgJunkMax), Lime)
+                val junkCount = profile.awgJunkCount
+                val junkMin = profile.awgJunkMin
+                val junkMax = profile.awgJunkMax
+                if (junkCount != null && junkMin != null && junkMax != null) {
+                    ValueChip(stringResource(R.string.obf_value_junk, junkCount, junkMin, junkMax), Lime)
                 }
                 profile.userAgent?.let { ValueChip("UA: " + it.substringAfter("(").substringBefore(")").take(26), Sky) }
                 if (profile.awgDecoyPacket != null) ValueChip("I1 $onText", Indigo)

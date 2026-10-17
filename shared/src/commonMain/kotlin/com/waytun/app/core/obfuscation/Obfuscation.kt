@@ -1,6 +1,8 @@
 package com.waytun.app.core.obfuscation
 
-import org.json.JSONObject
+import com.waytun.app.core.time.nowMillis
+import com.waytun.app.core.json.JSONNull
+import com.waytun.app.core.json.JSONObject
 import kotlin.random.Random
 
 enum class ObfuscationLevel { LIGHT, MEDIUM, STRONG }
@@ -96,13 +98,13 @@ data class ObfuscationProfile(
         .put("generatedAt", generatedAtMillis)
         .put("fragmentPackets", fragmentPackets).put("fragmentRecords", fragmentRecords)
         .put("fragmentDelayMs", fragmentDelayMs)
-        .put("fingerprint", fingerprint ?: JSONObject.NULL)
-        .put("quicInitialPacketSize", quicInitialPacketSize ?: JSONObject.NULL)
-        .put("userAgent", userAgent ?: JSONObject.NULL)
-        .put("awgJunkCount", awgJunkCount ?: JSONObject.NULL)
-        .put("awgJunkMin", awgJunkMin ?: JSONObject.NULL)
-        .put("awgJunkMax", awgJunkMax ?: JSONObject.NULL)
-        .put("awgDecoyPacket", awgDecoyPacket ?: JSONObject.NULL)
+        .put("fingerprint", fingerprint ?: JSONNull)
+        .put("quicInitialPacketSize", quicInitialPacketSize ?: JSONNull)
+        .put("userAgent", userAgent ?: JSONNull)
+        .put("awgJunkCount", awgJunkCount ?: JSONNull)
+        .put("awgJunkMin", awgJunkMin ?: JSONNull)
+        .put("awgJunkMax", awgJunkMax ?: JSONNull)
+        .put("awgDecoyPacket", awgDecoyPacket ?: JSONNull)
         .toString()
 
     companion object {
@@ -145,7 +147,7 @@ object ObfuscationGenerator {
     )
 
     /** Fresh random values for [settings]; [random] is injectable for tests. */
-    fun generate(settings: ObfuscationSettings, random: Random = Random.Default, now: Long = System.currentTimeMillis()): ObfuscationProfile {
+    fun generate(settings: ObfuscationSettings, random: Random = Random.Default, now: Long = nowMillis()): ObfuscationProfile {
         val level = settings.level
         val fragment = settings.tlsFragmentation
         // Light: packet split only. Medium/Strong: sometimes also split the TLS record itself.

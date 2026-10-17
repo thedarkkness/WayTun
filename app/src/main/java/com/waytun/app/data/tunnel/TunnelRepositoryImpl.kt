@@ -2,6 +2,7 @@ package com.waytun.app.data.tunnel
 
 import com.waytun.app.core.crypto.ConfigCipher
 import com.waytun.app.core.crypto.EncryptedConfig
+import com.waytun.app.core.parser.ConfDescriber
 import com.waytun.app.core.parser.TunnelDescriptor
 import com.waytun.app.core.parser.TunnelProtocol
 import java.nio.charset.StandardCharsets
@@ -48,7 +49,7 @@ class TunnelRepositoryImpl @Inject constructor(
                     createdAtEpochMillis = System.currentTimeMillis(),
                     encryptedConfig = encrypted.ciphertext,
                     configIv = encrypted.iv,
-                    details = TunnelDescriptor.describe(rawConfigText)
+                    details = TunnelDescriptor.describe(rawConfigText, ConfDescriber::describe)
                 )
             )
             id
@@ -86,7 +87,7 @@ class TunnelRepositoryImpl @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val encrypted = cipher.encrypt(rawConfigText.toByteArray(StandardCharsets.UTF_8))
-            dao.update(id, name, protocol.name, encrypted.ciphertext, encrypted.iv, TunnelDescriptor.describe(rawConfigText))
+            dao.update(id, name, protocol.name, encrypted.ciphertext, encrypted.iv, TunnelDescriptor.describe(rawConfigText, ConfDescriber::describe))
         }
     }
 
@@ -100,7 +101,7 @@ class TunnelRepositoryImpl @Inject constructor(
             runCatching {
                 val raw = String(cipher.decrypt(EncryptedConfig(entity.encryptedConfig, entity.configIv)), StandardCharsets.UTF_8)
                 // Empty string (not null) for configs that don't parse, so they aren't retried forever.
-                dao.updateDetails(entity.id, TunnelDescriptor.describe(raw) ?: "")
+                dao.updateDetails(entity.id, TunnelDescriptor.describe(raw, ConfDescriber::describe) ?: "")
             }
         }
     }

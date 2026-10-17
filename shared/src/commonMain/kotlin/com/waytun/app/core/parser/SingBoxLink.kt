@@ -1,8 +1,9 @@
 package com.waytun.app.core.parser
 
-import android.util.Base64
-import java.net.URLDecoder
-import org.json.JSONObject
+import com.waytun.app.core.text.UrlCoding
+import com.waytun.app.core.log.PlatformLog
+import com.waytun.app.core.text.Base64
+import com.waytun.app.core.json.JSONObject
 
 /** A parsed share link for any protocol sing-box runs, independent of sing-box's own JSON config format. */
 data class SingBoxLink(
@@ -93,7 +94,7 @@ object SingBoxLinkParser {
                 else -> null
             }?.let { if (fromJson) it.copy(fromJson = true) else it }
         } catch (e: Exception) {
-            android.util.Log.w("SingBoxLinkParser", "parse failed for $scheme://: ${e.javaClass.simpleName}")
+            PlatformLog.w("SingBoxLinkParser", "parse failed for $scheme://: ${e::class.simpleName}")
             null
         }
     }
@@ -325,7 +326,7 @@ object SingBoxLinkParser {
 
     /** Percent-decoding that keeps a literal `+` (URLDecoder would turn it into a space, corrupting base64 passwords). */
     private fun percentDecode(value: String): String = try {
-        URLDecoder.decode(value.replace("+", "%2B"), "UTF-8")
+        UrlCoding.decode(value.replace("+", "%2B"))
     } catch (e: Exception) {
         value
     }
@@ -334,7 +335,7 @@ object SingBoxLinkParser {
         val compact = value.trim().filterNot { it.isWhitespace() }
         val padded = compact.padEnd(compact.length + (4 - compact.length % 4) % 4, '=')
         for (flags in intArrayOf(Base64.DEFAULT, Base64.URL_SAFE)) {
-            runCatching { return String(Base64.decode(padded, flags), Charsets.UTF_8) }
+            runCatching { return Base64.decode(padded, flags).decodeToString() }
         }
         return null
     }

@@ -11,6 +11,7 @@ class WayTunApplication : Application() {
     @Inject lateinit var obfuscationManager: ObfuscationManager
 
     override fun onCreate() {
+        com.waytun.app.core.log.LogcatSink.install()
         super.onCreate()
         com.waytun.app.core.log.AppLog.init(this)
         com.waytun.app.ui.theme.InterfaceStyleStore.init(this)

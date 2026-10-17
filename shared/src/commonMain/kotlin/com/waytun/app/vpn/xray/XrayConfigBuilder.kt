@@ -3,8 +3,8 @@ package com.waytun.app.vpn.xray
 import com.waytun.app.core.obfuscation.ObfuscationProfile
 import com.waytun.app.core.parser.SingBoxLink
 import com.waytun.app.core.parser.TunnelProtocol
-import org.json.JSONArray
-import org.json.JSONObject
+import com.waytun.app.core.json.JSONArray
+import com.waytun.app.core.json.JSONObject
 
 private const val TUN_NAME = "waytun0"
 private const val TUN_MTU = 1400

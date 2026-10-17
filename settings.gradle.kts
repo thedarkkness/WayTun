@@ -24,5 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "WayTun"
 include(":app")
+include(":shared")
 include(":amneziawg-tunnel")
 project(":amneziawg-tunnel").projectDir = file("third_party/amneziawg-android/tunnel")

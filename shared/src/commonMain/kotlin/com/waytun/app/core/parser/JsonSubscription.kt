@@ -1,9 +1,9 @@
 package com.waytun.app.core.parser
 
-import android.util.Base64
-import java.net.URLEncoder
-import org.json.JSONArray
-import org.json.JSONObject
+import com.waytun.app.core.text.UrlCoding
+import com.waytun.app.core.text.Base64
+import com.waytun.app.core.json.JSONArray
+import com.waytun.app.core.json.JSONObject
 
 /**
  * Happ-style JSON subscriptions: an array of full Xray configs (one per server, named by
@@ -133,7 +133,7 @@ object JsonSubscription {
                     .put("sni", params["sni"] ?: "").put("fp", params["fp"] ?: "").put("alpn", params["alpn"] ?: "")
                     .put("path", params["path"] ?: params["serviceName"] ?: "").put("host", params["host"] ?: "")
                     .put(SOURCE_PARAM, SOURCE_VALUE)
-                "vmess://" + Base64.encodeToString(json.toString().toByteArray(), Base64.NO_WRAP)
+                "vmess://" + Base64.encodeToString(json.toString().encodeToByteArray(), Base64.NO_WRAP)
             }
             "trojan" -> {
                 val server = settings.optJSONArray("servers")?.optJSONObject(0) ?: return null
@@ -205,7 +205,7 @@ object JsonSubscription {
                     .put("sni", params["sni"] ?: "").put("fp", params["fp"] ?: "").put("alpn", params["alpn"] ?: "")
                     .put("path", params["path"] ?: params["serviceName"] ?: "").put("host", params["host"] ?: "")
                     .put(SOURCE_PARAM, SOURCE_VALUE)
-                "vmess://" + Base64.encodeToString(json.toString().toByteArray(), Base64.NO_WRAP)
+                "vmess://" + Base64.encodeToString(json.toString().encodeToByteArray(), Base64.NO_WRAP)
             }
             "trojan" -> link("trojan", outbound.optString("password"), server, port, params, name)
             "shadowsocks" -> ssLink(outbound.optString("method"), outbound.optString("password"), server, port, name)
@@ -248,7 +248,7 @@ object JsonSubscription {
         return "ss://${enc("$method:$password")}@$hostPart:$port?$SOURCE_PARAM=$SOURCE_VALUE#${enc(name)}"
     }
 
-    private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+    private fun enc(value: String): String = UrlCoding.encode(value).replace("+", "%20")
 }
 
 /** `org.json` has no "parse any JSON value" entry point; this picks array vs object by first character. */
