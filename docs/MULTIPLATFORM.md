@@ -121,6 +121,10 @@ Done (Android behaviour unchanged):
 - The Room identity hash is unchanged (`9a292c1d…`), the release APK keeps `com.waytun.app` 7/1.3.2 and the release
   certificate.
 
+Verified on a phone (Android 16, HyperOS) with the release build installed over 1.3.2: the existing database and
+settings open as they are; a subscription refresh keeps tunnel ids (the selected server stays selected); Xray
+(VLESS/REALITY, 75 Mbit/s) and AmneziaWG (60 Mbit/s) connect and pass traffic; switching the language works; no crashes.
+
 Still in `app` (Android-only on purpose): `TunnelConfigParser` (WireGuard/AmneziaWG config libraries ship as
 Android AARs; desktop gets a pure-Kotlin wg-quick parser in stage 3), `ServerAddressResolver`, the VPN backends and
 services, `KeystoreConfigCipher`, `DeviceIdentity`, `AppLanguage`, `PingManager`, `UiPrefs`, notifications,
