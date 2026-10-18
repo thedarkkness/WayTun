@@ -48,6 +48,7 @@ kotlin {
             api(libs.haze)
             api(libs.jb.lifecycle.viewmodel.compose)
             api(libs.jb.lifecycle.runtime.compose)
+            implementation(libs.jb.navigation.compose)
             api(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             api(libs.ktor.client.core)

@@ -10,10 +10,8 @@ kotlin = "2.2.10"
 ksp = "2.3.12"
 composeBom = "2026.02.01"
 hilt = "2.60.1"
-hiltNavigationCompose = "1.4.0"
 room = "2.8.5"
 wireguardTunnel = "1.0.20260102"
-navigationCompose = "2.10.2"
 androidxAnnotation = "1.9.1"
 androidxCollection = "1.5.0"
 jsr305 = "3.0.2"
@@ -51,7 +49,6 @@ androidx-compose-material-icons-core = { group = "androidx.compose.material", na
 
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
-androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
@@ -59,7 +56,6 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 
 
 wireguard-tunnel = { group = "com.wireguard.android", name = "tunnel", version.ref = "wireguardTunnel" }
-androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
 # Used only by the vendored official amneziawg-android :tunnel module (third_party/amneziawg-android)
 androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidxAnnotation" }

@@ -75,7 +75,6 @@ dependencies {
     // Dependency Injection
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
 
     // Local storage: tunnel metadata (Room)
     implementation(libs.androidx.room.runtime)
@@ -88,7 +87,6 @@ dependencies {
     // artifact, so it's vendored from source at third_party/amneziawg-android (see settings.gradle.kts).
     implementation(project(":amneziawg-tunnel"))
 
-    implementation(libs.androidx.navigation.compose)
 
     // QR import/export
     implementation(libs.androidx.camera.core)
