@@ -20,8 +20,12 @@ import java.util.Locale
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)
 
-actual fun relativeTimeSpan(epochMillis: Long, nowMillis: Long, minResolutionMillis: Long): String =
-    DateUtils.getRelativeTimeSpanString(epochMillis, nowMillis, minResolutionMillis, DateUtils.FORMAT_ABBREV_RELATIVE).toString()
+actual fun relativeTimeSpan(epochMillis: Long, nowMillis: Long, minResolutionMillis: Long, abbreviated: Boolean): String =
+    if (abbreviated) {
+        DateUtils.getRelativeTimeSpanString(epochMillis, nowMillis, minResolutionMillis, DateUtils.FORMAT_ABBREV_RELATIVE).toString()
+    } else {
+        DateUtils.getRelativeTimeSpanString(epochMillis, nowMillis, minResolutionMillis).toString()
+    }
 
 actual fun formatDateSkeleton(epochMillis: Long, skeleton: String): String =
     SimpleDateFormat(DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton), Locale.getDefault()).format(Date(epochMillis))
@@ -34,9 +38,9 @@ actual fun formatDecimal(value: Double, maxFractionDigits: Int): String =
 actual fun qrCodeImage(text: String, sizePx: Int): ImageBitmap? = QrCodeGenerator.generate(text, sizePx)?.asImageBitmap()
 
 @Composable
-actual fun rememberClipboardWriter(): (String) -> Unit {
+actual fun rememberClipboardWriter(label: String): (String) -> Unit {
     val context = LocalContext.current
-    return remember(context) {
-        { text -> context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("config", text)) }
+    return remember(context, label) {
+        { text -> context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(label, text)) }
     }
 }

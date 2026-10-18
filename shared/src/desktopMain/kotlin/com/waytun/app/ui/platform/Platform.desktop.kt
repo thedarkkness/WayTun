@@ -20,7 +20,7 @@ import java.util.Locale
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
 
-actual fun relativeTimeSpan(epochMillis: Long, nowMillis: Long, minResolutionMillis: Long): String {
+actual fun relativeTimeSpan(epochMillis: Long, nowMillis: Long, minResolutionMillis: Long, abbreviated: Boolean): String {
     val ru = Locale.getDefault().language == "ru"
     val minutes = (nowMillis - epochMillis).coerceAtLeast(0) / 60_000
     return when {
@@ -52,6 +52,6 @@ actual fun qrCodeImage(text: String, sizePx: Int): ImageBitmap? {
 }
 
 @Composable
-actual fun rememberClipboardWriter(): (String) -> Unit = remember {
+actual fun rememberClipboardWriter(label: String): (String) -> Unit = remember {
     { text -> Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null) }
 }

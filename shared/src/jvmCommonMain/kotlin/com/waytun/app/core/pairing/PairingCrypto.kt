@@ -7,7 +7,6 @@ import javax.crypto.spec.SecretKeySpec
 
 private const val TRANSFORMATION = "AES/GCM/NoPadding"
 private const val GCM_TAG_LENGTH_BITS = 128
-const val PAIRING_KEY_SIZE_BYTES = 32
 
 /**
  * One-time AES-256-GCM encryption for the local-network device-to-device tunnel transfer.

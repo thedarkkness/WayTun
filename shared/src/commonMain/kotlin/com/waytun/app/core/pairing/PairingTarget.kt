@@ -1,6 +1,6 @@
 package com.waytun.app.core.pairing
 
-import android.util.Base64
+import com.waytun.app.core.text.Base64
 
 /**
  * Encodes where/how to send a tunnel config to a device that just displayed a "receive via QR"
@@ -30,3 +30,6 @@ data class PairingTarget(val ip: String, val port: Int, val keyBytes: ByteArray)
         }
     }
 }
+
+/** AES-256 key for the one-shot LAN transfer. */
+const val PAIRING_KEY_SIZE_BYTES = 32

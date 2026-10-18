@@ -35,6 +35,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import androidx.compose.runtime.CompositionLocalProvider
 import com.waytun.app.ui.AndroidPlatformServices
+import com.waytun.app.ui.tunnels.rememberAndroidTunnelListHost
 import com.waytun.app.ui.AppContainer
 import com.waytun.app.ui.LocalAppContainer
 
@@ -100,7 +101,8 @@ class MainActivity : ComponentActivity() {
                         TunnelListScreen(
                             onTunnelClick = { tunnelId -> navController.navigate("detail/$tunnelId") },
                             onSettingsClick = { navController.navigate(ROUTE_SETTINGS) },
-                            onSubscriptionSettings = { id -> navController.navigate("subscription/$id") }
+                            onSubscriptionSettings = { id -> navController.navigate("subscription/$id") },
+                            host = rememberAndroidTunnelListHost()
                         )
                     }
                     composable(ROUTE_DETAIL) { entry ->

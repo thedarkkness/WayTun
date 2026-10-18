@@ -1,21 +1,51 @@
 package com.waytun.app.ui.tunnels
 
-import android.Manifest
-import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Intent
-import android.content.Context
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.net.VpnService
-import android.os.Build
-import android.os.PowerManager
-import android.provider.OpenableColumns
-import android.provider.Settings
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_add_subscription
+import com.waytun.app.res.action_add_tunnel
+import com.waytun.app.res.action_cancel
+import com.waytun.app.res.action_continue
+import com.waytun.app.res.action_delete
+import com.waytun.app.res.action_import_file
+import com.waytun.app.res.action_no
+import com.waytun.app.res.action_not_now
+import com.waytun.app.res.action_paste_clipboard
+import com.waytun.app.res.action_save
+import com.waytun.app.res.action_scan_qr
+import com.waytun.app.res.action_settings
+import com.waytun.app.res.action_yes
+import com.waytun.app.res.app_name
+import com.waytun.app.res.battery_rationale_message
+import com.waytun.app.res.battery_rationale_title
+import com.waytun.app.res.camera_permission_denied
+import com.waytun.app.res.delete_subscription_message
+import com.waytun.app.res.delete_subscription_title
+import com.waytun.app.res.delete_tunnel_message
+import com.waytun.app.res.delete_tunnel_title
+import com.waytun.app.res.empty_hint
+import com.waytun.app.res.empty_title
+import com.waytun.app.res.import_preview_address_label
+import com.waytun.app.res.import_preview_allowed_ips_label
+import com.waytun.app.res.import_preview_dns_label
+import com.waytun.app.res.import_preview_endpoint_label
+import com.waytun.app.res.import_preview_mtu_label
+import com.waytun.app.res.import_preview_name_label
+import com.waytun.app.res.import_preview_obfuscation_label
+import com.waytun.app.res.import_preview_protocol_label
+import com.waytun.app.res.import_preview_title
+import com.waytun.app.res.notification_permission_rationale_message
+import com.waytun.app.res.notification_permission_rationale_title
+import com.waytun.app.res.pairing_default_name
+import com.waytun.app.res.pairing_receive_title
+import com.waytun.app.res.pairing_select_tunnel_title
+import com.waytun.app.res.pairing_sending
+import com.waytun.app.res.pairing_whole_subscription
+import com.waytun.app.res.subscription_insecure_message
+import com.waytun.app.res.subscription_insecure_title
+import com.waytun.app.res.subscription_link_copied
+import com.waytun.app.res.subscription_loading
+import com.waytun.app.res.subscription_rename
+import com.waytun.app.res.subscription_url_label
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -72,7 +102,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,24 +109,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.core.content.ContextCompat
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.jetbrains.compose.resources.stringResource
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.waytun.app.ui.AppContainer
+import com.waytun.app.ui.LocalAppContainer
+import com.waytun.app.ui.resolve
+import org.jetbrains.compose.resources.getString
+import com.waytun.app.ui.platform.rememberClipboardWriter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.waytun.app.R
 import com.waytun.app.core.pairing.PairingTarget
 import com.waytun.app.core.parser.TunnelProtocol
 import com.waytun.app.data.subscription.SubscriptionRepository
-import com.waytun.app.ui.pairing.ReceiveViaNetworkScreen
-import com.waytun.app.ui.scanner.QrScannerScreen
 import com.waytun.app.ui.components.WayTunSnackbarHost
 import com.waytun.app.ui.components.showWayTun
 import com.waytun.app.ui.icons.AppIcons
-import com.waytun.app.ui.tv.isTelevision
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -105,7 +131,9 @@ fun TunnelListScreen(
     onTunnelClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onSubscriptionSettings: (String) -> Unit,
-    viewModel: TunnelListViewModel = hiltViewModel()
+    host: TunnelListHost,
+    container: AppContainer = LocalAppContainer.current,
+    viewModel: TunnelListViewModel = viewModel { TunnelListViewModel(container) }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val speed by viewModel.speed.collectAsStateWithLifecycle()
@@ -114,21 +142,16 @@ fun TunnelListScreen(
     val isSendingTunnel by viewModel.isSendingTunnel.collectAsStateWithLifecycle()
     val isAddingSubscription by viewModel.isAddingSubscription.collectAsStateWithLifecycle()
     val pendingInsecureSubscription by viewModel.pendingInsecureSubscription.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val copySubscriptionLink = rememberClipboardWriter("subscription")
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     val showScrollTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 600 } }
 
-    var pendingConnectTunnelId by remember { mutableStateOf<String?>(null) }
-    var showNotificationRationale by remember { mutableStateOf(false) }
-    var showBatteryRationale by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<TunnelListItem?>(null) }
     var editedImportName by remember(pendingImport) { mutableStateOf(pendingImport?.suggestedName.orEmpty()) }
     var showImportMenu by remember { mutableStateOf(false) }
-    var showQrScanner by remember { mutableStateOf(false) }
-    var showReceiveOverlay by rememberSaveable { mutableStateOf(false) }
-    val isTv = remember { isTelevision(context) }
+    val isTv = host.isTv
     var pendingPairingTarget by remember { mutableStateOf<PairingTarget?>(null) }
     // Set while the QR scanner is open for "send this subscription to a TV".
     var sendSubscriptionId by remember { mutableStateOf<String?>(null) }
@@ -138,161 +161,103 @@ fun TunnelListScreen(
     var pendingSubscriptionRename by remember { mutableStateOf<SubscriptionHeader?>(null) }
     var renameText by remember { mutableStateOf("") }
 
+    val receivedDefaultName = stringResource(Res.string.pairing_default_name)
+    fun openReceive() = host.receiveFromDevice()
+    val hostResults = TunnelListResults(
+        onFilePicked = { suggestedName, text ->
+            if (text.isNullOrBlank()) viewModel.onImportFileReadFailed() else viewModel.onConfigPicked(suggestedName, text)
+        },
+        onReceived = { text ->
+            if (SubscriptionRepository.isSubscriptionUrl(text)) viewModel.onAddSubscription(text.trim())
+            else viewModel.onConfigPicked(receivedDefaultName, text)
+        }
+    )
+
     // A TV has no keyboard worth the name: when it has nothing yet, go straight to "add from phone".
     LaunchedEffect(isTv) {
         if (isTv) {
             kotlinx.coroutines.delay(1_500)
-            if (viewModel.uiState.value.sections.isEmpty()) showReceiveOverlay = true
+            if (viewModel.uiState.value.sections.isEmpty()) openReceive()
         }
     }
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                is TunnelListEvent.Message -> snackbarHostState.showWayTun(event.text, event.isError)
-            }
-        }
-    }
-
-    val vpnConsentLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val tunnelId = pendingConnectTunnelId
-        pendingConnectTunnelId = null
-        if (result.resultCode == Activity.RESULT_OK && tunnelId != null) {
-            viewModel.onToggleTunnel(tunnelId)
-        } else {
-            viewModel.onVpnPermissionDenied()
-        }
-    }
-
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* Connecting proceeds either way; this only affects whether the status notice is visible. */ }
-
-    val batteryExemptionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { /* Connecting proceeds either way; this only affects whether the OS can kill the tunnel in the background. */ }
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            showQrScanner = true
-        } else {
-            scope.launch { snackbarHostState.showWayTun(context.getString(R.string.camera_permission_denied), isError = true) }
-        }
-    }
-
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val text = withContext(Dispatchers.IO) { readTextOrNull(context, uri) }
-            if (text.isNullOrBlank()) {
-                viewModel.onImportFileReadFailed()
-            } else {
-                val suggestedName = queryDisplayName(context, uri)
-                    ?.removeSuffix(".conf")
-                    ?.removeSuffix(".CONF")
-                    .orEmpty()
-                viewModel.onConfigPicked(suggestedName, text)
+                is TunnelListEvent.Message -> snackbarHostState.showWayTun(event.text.resolve(), event.isError)
             }
         }
     }
 
     fun beginConnect(tunnelId: String) {
-        val prepareIntent = VpnService.prepare(context)
-        if (prepareIntent != null) {
-            pendingConnectTunnelId = tunnelId
-            vpnConsentLauncher.launch(prepareIntent)
-        } else {
-            viewModel.onToggleTunnel(tunnelId)
+        host.requestVpnPermission(
+            onGranted = { viewModel.onToggleTunnel(tunnelId) },
+            onDenied = { viewModel.onVpnPermissionDenied() }
+        )
+    }
+
+    fun pickFile() = host.pickConfigFile()
+
+    fun onQrScanned(text: String) {
+        val pairing = PairingTarget.parse(text)
+        val subscriptionToSend = sendSubscriptionId
+        sendSubscriptionId = null
+        when {
+            pairing != null && subscriptionToSend != null -> viewModel.sendSubscriptionOverNetwork(subscriptionToSend, pairing)
+            pairing != null -> pendingPairingTarget = pairing
+            SubscriptionRepository.isSubscriptionUrl(text) -> viewModel.onAddSubscription(text)
+            else -> viewModel.onTextImported("", text)
         }
+    }
+
+    fun startScan() {
+        host.scanQr(
+            onResult = ::onQrScanned,
+            onDismiss = { sendSubscriptionId = null },
+            onDenied = {
+                sendSubscriptionId = null
+                scope.launch { snackbarHostState.showWayTun(getString(Res.string.camera_permission_denied), isError = true) }
+            }
+        )
     }
 
     fun openAddSubscription() {
         // Pre-fill from the clipboard when it already holds a subscription link.
-        val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip
-        val text = clip?.takeIf { it.itemCount > 0 }
-            ?.getItemAt(0)?.coerceToText(context)?.toString()?.trim().orEmpty()
+        val text = host.clipboardText().trim()
         subscriptionUrl = if (SubscriptionRepository.isSubscriptionUrl(text)) text else ""
         showAddSubscription = true
-    }
-
-    if (showNotificationRationale) {
-        GlassAlertDialog(
-            onDismissRequest = { showNotificationRationale = false },
-            title = { Text(stringResource(R.string.notification_permission_rationale_title)) },
-            text = { Text(stringResource(R.string.notification_permission_rationale_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showNotificationRationale = false
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }) { Text(stringResource(R.string.action_continue)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotificationRationale = false }) {
-                    Text(stringResource(R.string.action_not_now))
-                }
-            }
-        )
-    }
-
-    if (showBatteryRationale) {
-        GlassAlertDialog(
-            onDismissRequest = { showBatteryRationale = false },
-            title = { Text(stringResource(R.string.battery_rationale_title)) },
-            text = { Text(stringResource(R.string.battery_rationale_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showBatteryRationale = false
-                    runCatching {
-                        batteryExemptionLauncher.launch(
-                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
-                        )
-                    }
-                }) { Text(stringResource(R.string.action_continue)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBatteryRationale = false }) {
-                    Text(stringResource(R.string.action_not_now))
-                }
-            }
-        )
     }
 
     pendingImport?.let { preview ->
         GlassAlertDialog(
             onDismissRequest = { viewModel.onCancelImport() },
-            title = { Text(stringResource(R.string.import_preview_title)) },
+            title = { Text(stringResource(Res.string.import_preview_title)) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = editedImportName,
                         onValueChange = { editedImportName = it },
-                        label = { Text(stringResource(R.string.import_preview_name_label)) },
+                        label = { Text(stringResource(Res.string.import_preview_name_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    PreviewRow(stringResource(R.string.import_preview_protocol_label), protocolDisplayName(preview.protocol))
-                    PreviewRow(stringResource(R.string.import_preview_address_label), preview.addresses)
-                    PreviewRow(stringResource(R.string.import_preview_dns_label), preview.dns)
-                    PreviewRow(stringResource(R.string.import_preview_endpoint_label), preview.endpoint)
-                    PreviewRow(stringResource(R.string.import_preview_allowed_ips_label), preview.allowedIps)
-                    preview.mtu?.let { PreviewRow(stringResource(R.string.import_preview_mtu_label), it) }
-                    preview.obfuscation?.let { PreviewRow(stringResource(R.string.import_preview_obfuscation_label), it) }
+                    PreviewRow(stringResource(Res.string.import_preview_protocol_label), protocolDisplayName(preview.protocol))
+                    PreviewRow(stringResource(Res.string.import_preview_address_label), preview.addresses)
+                    PreviewRow(stringResource(Res.string.import_preview_dns_label), preview.dns)
+                    PreviewRow(stringResource(Res.string.import_preview_endpoint_label), preview.endpoint)
+                    PreviewRow(stringResource(Res.string.import_preview_allowed_ips_label), preview.allowedIps)
+                    preview.mtu?.let { PreviewRow(stringResource(Res.string.import_preview_mtu_label), it) }
+                    preview.obfuscation?.let { PreviewRow(stringResource(Res.string.import_preview_obfuscation_label), it) }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.onConfirmImport(editedImportName) }) {
-                    Text(stringResource(R.string.action_save))
+                    Text(stringResource(Res.string.action_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onCancelImport() }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -301,17 +266,17 @@ fun TunnelListScreen(
     pendingDelete?.let { tunnel ->
         GlassAlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.delete_tunnel_title)) },
-            text = { Text(stringResource(R.string.delete_tunnel_message, tunnel.name)) },
+            title = { Text(stringResource(Res.string.delete_tunnel_title)) },
+            text = { Text(stringResource(Res.string.delete_tunnel_message, tunnel.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.onDeleteTunnel(tunnel.id)
                     pendingDelete = null
-                }) { Text(stringResource(R.string.action_delete)) }
+                }) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -320,13 +285,13 @@ fun TunnelListScreen(
     pendingPairingTarget?.let { target ->
         GlassAlertDialog(
             onDismissRequest = { pendingPairingTarget = null },
-            title = { Text(stringResource(R.string.pairing_select_tunnel_title)) },
+            title = { Text(stringResource(Res.string.pairing_select_tunnel_title)) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     uiState.sections.mapNotNull { it.subscription }.forEach { subscription ->
                         ListItem(
                             headlineContent = { Text(subscription.name) },
-                            supportingContent = { Text(stringResource(R.string.pairing_whole_subscription)) },
+                            supportingContent = { Text(stringResource(Res.string.pairing_whole_subscription)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -352,7 +317,7 @@ fun TunnelListScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { pendingPairingTarget = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -361,12 +326,12 @@ fun TunnelListScreen(
     if (showAddSubscription) {
         GlassAlertDialog(
             onDismissRequest = { showAddSubscription = false },
-            title = { Text(stringResource(R.string.action_add_subscription)) },
+            title = { Text(stringResource(Res.string.action_add_subscription)) },
             text = {
                 OutlinedTextField(
                     value = subscriptionUrl,
                     onValueChange = { subscriptionUrl = it },
-                    label = { Text(stringResource(R.string.subscription_url_label)) },
+                    label = { Text(stringResource(Res.string.subscription_url_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -375,11 +340,11 @@ fun TunnelListScreen(
                 TextButton(onClick = {
                     showAddSubscription = false
                     viewModel.onAddSubscription(subscriptionUrl)
-                }) { Text(stringResource(R.string.action_save)) }
+                }) { Text(stringResource(Res.string.action_save)) }
             },
             dismissButton = {
                 TextButton(onClick = { showAddSubscription = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -389,16 +354,16 @@ fun TunnelListScreen(
         GlassAlertDialog(
             onDismissRequest = { viewModel.onDismissInsecureSubscription() },
             icon = { Icon(Icons.Default.Warning, contentDescription = null) },
-            title = { Text(stringResource(R.string.subscription_insecure_title)) },
-            text = { Text(stringResource(R.string.subscription_insecure_message)) },
+            title = { Text(stringResource(Res.string.subscription_insecure_title)) },
+            text = { Text(stringResource(Res.string.subscription_insecure_message)) },
             confirmButton = {
                 TextButton(onClick = { viewModel.onConfirmInsecureSubscription() }) {
-                    Text(stringResource(R.string.action_yes))
+                    Text(stringResource(Res.string.action_yes))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onDismissInsecureSubscription() }) {
-                    Text(stringResource(R.string.action_no))
+                    Text(stringResource(Res.string.action_no))
                 }
             }
         )
@@ -407,7 +372,7 @@ fun TunnelListScreen(
     pendingSubscriptionRename?.let { subscription ->
         GlassAlertDialog(
             onDismissRequest = { pendingSubscriptionRename = null },
-            title = { Text(stringResource(R.string.subscription_rename)) },
+            title = { Text(stringResource(Res.string.subscription_rename)) },
             text = {
                 OutlinedTextField(
                     value = renameText,
@@ -420,10 +385,10 @@ fun TunnelListScreen(
                 TextButton(onClick = {
                     viewModel.onRenameSubscription(subscription.id, renameText.trim())
                     pendingSubscriptionRename = null
-                }) { Text(stringResource(R.string.action_save)) }
+                }) { Text(stringResource(Res.string.action_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingSubscriptionRename = null }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { pendingSubscriptionRename = null }) { Text(stringResource(Res.string.action_cancel)) }
             }
         )
     }
@@ -431,17 +396,17 @@ fun TunnelListScreen(
     pendingSubscriptionDelete?.let { subscription ->
         GlassAlertDialog(
             onDismissRequest = { pendingSubscriptionDelete = null },
-            title = { Text(stringResource(R.string.delete_subscription_title)) },
-            text = { Text(stringResource(R.string.delete_subscription_message, subscription.name)) },
+            title = { Text(stringResource(Res.string.delete_subscription_title)) },
+            text = { Text(stringResource(Res.string.delete_subscription_message, subscription.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.onDeleteSubscription(subscription.id)
                     pendingSubscriptionDelete = null
-                }) { Text(stringResource(R.string.action_delete)) }
+                }) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingSubscriptionDelete = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -455,7 +420,7 @@ fun TunnelListScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     CircularProgressIndicator()
                     Text(
-                        stringResource(if (isAddingSubscription) R.string.subscription_loading else R.string.pairing_sending),
+                        stringResource(if (isAddingSubscription) Res.string.subscription_loading else Res.string.pairing_sending),
                         modifier = Modifier.padding(top = 16.dp)
                     )
                 }
@@ -463,40 +428,7 @@ fun TunnelListScreen(
         )
     }
 
-    BackHandler(enabled = showQrScanner) { showQrScanner = false; sendSubscriptionId = null }
-    BackHandler(enabled = showReceiveOverlay) { showReceiveOverlay = false }
-
-    if (showQrScanner) {
-        QrScannerScreen(
-            onResult = { text ->
-                showQrScanner = false
-                val pairing = PairingTarget.parse(text)
-                val subscriptionToSend = sendSubscriptionId
-                sendSubscriptionId = null
-                when {
-                    pairing != null && subscriptionToSend != null -> viewModel.sendSubscriptionOverNetwork(subscriptionToSend, pairing)
-                    pairing != null -> pendingPairingTarget = pairing
-                    SubscriptionRepository.isSubscriptionUrl(text) -> viewModel.onAddSubscription(text)
-                    else -> viewModel.onTextImported("", text)
-                }
-            },
-            onClose = { showQrScanner = false; sendSubscriptionId = null }
-        )
-        return
-    }
-
-    if (showReceiveOverlay) {
-        val defaultName = stringResource(R.string.pairing_default_name)
-        ReceiveViaNetworkScreen(
-            onReceived = { text ->
-                showReceiveOverlay = false
-                if (SubscriptionRepository.isSubscriptionUrl(text)) viewModel.onAddSubscription(text.trim())
-                else viewModel.onConfigPicked(defaultName, text)
-            },
-            onClose = { showReceiveOverlay = false }
-        )
-        return
-    }
+    if (host.Overlays(hostResults)) return
 
     fun onPowerRequested() {
         val hero = uiState.hero
@@ -505,38 +437,25 @@ fun TunnelListScreen(
             return
         }
         val selected = uiState.tunnels.firstOrNull { it.isSelected } ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            showNotificationRationale = true
-        } else if (!isTv) {
-            // The OS (and on many phones, the manufacturer's own battery manager on top of it) can kill a
-            // backgrounded VPN service to save power, silently dropping the tunnel until it's reopened by hand.
-            // Asking once to be exempted is what keeps a connection up unattended, the way users expect.
-            val powerManager = context.getSystemService(PowerManager::class.java)
-            if (powerManager?.isIgnoringBatteryOptimizations(context.packageName) == false) {
-                showBatteryRationale = true
-            }
-        }
+        host.onBeforeConnect()
         beginConnect(selected.id)
     }
 
-    val linkCopied = stringResource(R.string.subscription_link_copied)
+    val linkCopied = stringResource(Res.string.subscription_link_copied)
 
     Box(Modifier.fillMaxSize()) {
     GlassScaffold(
         title = {
             SparkleTitle(
-                text = stringResource(R.string.app_name),
+                text = stringResource(Res.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
-                onLongPress = { showReceiveOverlay = true }
+                onLongPress = { if (host.canReceiveFromDevice) openReceive() }
             )
         },
         actions = {
             IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.action_settings))
+                Icon(Icons.Default.Settings, contentDescription = stringResource(Res.string.action_settings))
             }
         },
         floatingActionButton = {
@@ -549,60 +468,53 @@ fun TunnelListScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = stringResource(R.string.action_add_tunnel)
+                        contentDescription = stringResource(Res.string.action_add_tunnel)
                     )
                 }
                 GlassDropdownMenu(
                     expanded = showImportMenu,
                     onDismissRequest = { showImportMenu = false }
                 ) {
-                    if (isTv) {
+                    if (isTv && host.canReceiveFromDevice) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.pairing_receive_title)) },
+                            text = { Text(stringResource(Res.string.pairing_receive_title)) },
                             leadingIcon = { Icon(AppIcons.Tv, null, modifier = Modifier.size(20.dp)) },
                             onClick = {
                                 showImportMenu = false
-                                showReceiveOverlay = true
+                                openReceive()
                             }
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_paste_clipboard)) },
+                        text = { Text(stringResource(Res.string.action_paste_clipboard)) },
                         onClick = {
                             showImportMenu = false
-                            val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip
-                            val text = clip?.takeIf { it.itemCount > 0 }
-                                ?.getItemAt(0)?.coerceToText(context)?.toString()
-                            viewModel.onTextImported("", text.orEmpty())
+                            viewModel.onTextImported("", host.clipboardText())
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_add_subscription)) },
+                        text = { Text(stringResource(Res.string.action_add_subscription)) },
                         onClick = {
                             showImportMenu = false
                             openAddSubscription()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_import_file)) },
+                        text = { Text(stringResource(Res.string.action_import_file)) },
                         onClick = {
                             showImportMenu = false
-                            filePickerLauncher.launch(arrayOf("*/*"))
+                            pickFile()
                         }
                     )
-                    if (!isTv) DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_scan_qr)) },
-                        onClick = {
-                            showImportMenu = false
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                                PackageManager.PERMISSION_GRANTED
-                            ) {
-                                showQrScanner = true
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    host.scanQrLabel?.let { label ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(label)) },
+                            onClick = {
+                                showImportMenu = false
+                                startScan()
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
             }
@@ -630,12 +542,7 @@ fun TunnelListScreen(
                 item(key = "empty") {
                     EmptyState(
                         onAddSubscription = ::openAddSubscription,
-                        onPaste = {
-                            val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip
-                            val text = clip?.takeIf { it.itemCount > 0 }
-                                ?.getItemAt(0)?.coerceToText(context)?.toString()
-                            viewModel.onTextImported("", text.orEmpty())
-                        }
+                        onPaste = { viewModel.onTextImported("", host.clipboardText()) }
                     )
                 }
             }
@@ -659,14 +566,10 @@ fun TunnelListScreen(
                             onToggleCollapsed = { viewModel.onToggleSubscriptionCollapsed(subscription.id) },
                             onRefresh = { viewModel.onRefreshSubscription(subscription.id) },
                             onPingAll = { viewModel.pingAll(section.tunnels.map { it.id }) },
-                            onSendToTv = if (isTv) null else {
+                            onSendToTv = if (isTv || host.scanQrLabel == null) null else {
                                 {
                                 sendSubscriptionId = subscription.id
-                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                    showQrScanner = true
-                                } else {
-                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                                }
+                                startScan()
                                 }
                             },
                             onOpenSettings = { onSubscriptionSettings(subscription.id) },
@@ -678,17 +581,14 @@ fun TunnelListScreen(
                             onCopyLink = {
                                 scope.launch {
                                     viewModel.subscriptionUrl(subscription.id)?.let { url ->
-                                        context.getSystemService(ClipboardManager::class.java)
-                                            ?.setPrimaryClip(ClipData.newPlainText("subscription", url))
+                                        copySubscriptionLink(url)
                                         snackbarHostState.showWayTun(linkCopied)
                                     }
                                 }
                             },
                             onDelete = { pendingSubscriptionDelete = subscription },
                             onOpenUrl = { url ->
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                }
+                                host.openUrl(url)
                             },
                             modifier = Modifier.animateItem()
                         ) {
@@ -740,23 +640,23 @@ private fun EmptyState(onAddSubscription: () -> Unit, onPaste: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp, horizontal = 8.dp)
     ) {
         Text(
-            stringResource(R.string.empty_title),
+            stringResource(Res.string.empty_title),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Text(
-            stringResource(R.string.empty_hint),
+            stringResource(Res.string.empty_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)
         )
         GlassButton(onClick = onAddSubscription, primary = true, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.action_add_subscription))
+            Text(stringResource(Res.string.action_add_subscription))
         }
         GlassButton(onClick = onPaste, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Text(stringResource(R.string.action_paste_clipboard))
+            Text(stringResource(Res.string.action_paste_clipboard))
         }
     }
 }
@@ -778,13 +678,3 @@ private fun protocolDisplayName(protocol: TunnelProtocol): String = when (protoc
     TunnelProtocol.TUIC -> "TUIC"
 }
 
-private fun readTextOrNull(context: Context, uri: Uri): String? =
-    runCatching {
-        context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-    }.getOrNull()
-
-private fun queryDisplayName(context: Context, uri: Uri): String? =
-    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
-    }

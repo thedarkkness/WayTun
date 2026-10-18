@@ -1,5 +1,7 @@
 package com.waytun.app.ui.components
 
+import com.waytun.app.ui.UiText
+import com.waytun.app.ui.asString
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -41,11 +43,11 @@ import com.waytun.app.ui.theme.WayTunTheme
 
 /** What the centered status panel shows: work in progress, then how it ended. */
 sealed interface HudState {
-    val text: String
+    val text: UiText
 
-    data class Loading(override val text: String) : HudState
-    data class Success(override val text: String) : HudState
-    data class Failure(override val text: String) : HudState
+    data class Loading(override val text: UiText) : HudState
+    data class Success(override val text: UiText) : HudState
+    data class Failure(override val text: UiText) : HudState
 }
 
 /**
@@ -93,7 +95,7 @@ fun StatusHud(state: HudState?, modifier: Modifier = Modifier) {
                         }
                         Spacer(Modifier.height(14.dp))
                         Text(
-                            current?.text.orEmpty(),
+                            current?.text?.asString().orEmpty(),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
                             maxLines = 4

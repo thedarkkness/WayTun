@@ -474,7 +474,7 @@ private fun ObfuscationSection(
             ) { v -> onUpdate { it.copy(applyRotationLive = v) } }
 
             SectionLabel(stringResource(Res.string.obf_current))
-            val generated = relativeTimeSpan(profile.generatedAtMillis, nowMillis(), 1_000L)
+            val generated = relativeTimeSpan(profile.generatedAtMillis, nowMillis(), 1_000L, abbreviated = false)
             Text(
                 stringResource(Res.string.obf_generated, generated),
                 style = MaterialTheme.typography.bodySmall,

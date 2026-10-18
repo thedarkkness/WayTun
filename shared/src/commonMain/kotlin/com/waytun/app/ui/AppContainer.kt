@@ -41,6 +41,9 @@ interface PlatformServices {
     /** Null where the app can't update itself in place yet. */
     val updater: AppUpdater?
 
+    /** Sends [text] to a device showing a "receive" QR code, end-to-end encrypted with its one-time key. */
+    suspend fun sendToDevice(target: com.waytun.app.core.pairing.PairingTarget, text: String): Result<Unit>
+
     /** wg-quick / awg-quick `.conf` text, checked with the WireGuard/AmneziaWG implementation the platform runs. */
     fun checkConf(rawText: String): ConfCheck
 }

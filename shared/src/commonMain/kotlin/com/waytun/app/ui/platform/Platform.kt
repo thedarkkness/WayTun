@@ -7,8 +7,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)
 
-/** "5 min. ago" in the current language at [minResolutionMillis] granularity, like Android's DateUtils. */
-expect fun relativeTimeSpan(epochMillis: Long, nowMillis: Long, minResolutionMillis: Long): String
+/**
+ * "5 min. ago" ([abbreviated]) or "5 minutes ago" in the current language at [minResolutionMillis] granularity,
+ * like Android's DateUtils.getRelativeTimeSpanString.
+ */
+expect fun relativeTimeSpan(epochMillis: Long, nowMillis: Long, minResolutionMillis: Long, abbreviated: Boolean = true): String
 
 /** A date in the current locale for a pattern skeleton such as "d MMM yyyy". */
 expect fun formatDateSkeleton(epochMillis: Long, skeleton: String): String
@@ -35,4 +38,4 @@ expect fun qrCodeImage(text: String, sizePx: Int = 800): ImageBitmap?
 
 /** Puts plain text on the system clipboard. */
 @Composable
-expect fun rememberClipboardWriter(): (String) -> Unit
+expect fun rememberClipboardWriter(label: String = "config"): (String) -> Unit

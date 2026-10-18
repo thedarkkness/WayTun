@@ -1,25 +1,41 @@
 package com.waytun.app.ui.tunnels
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.waytun.app.R
-import com.waytun.app.core.obfuscation.ObfuscationManager
-import com.waytun.app.core.pairing.PairingCrypto
+import com.waytun.app.core.net.runSpeedTest
+import com.waytun.app.core.time.nowMillis
+import com.waytun.app.res.Res
+import com.waytun.app.res.config_import_success
+import com.waytun.app.res.import_bulk_partial
+import com.waytun.app.res.import_default_name
+import com.waytun.app.res.import_error_clipboard_empty
+import com.waytun.app.res.import_error_file_read
+import com.waytun.app.res.import_error_nothing_recognized
+import com.waytun.app.res.pairing_error_generic
+import com.waytun.app.res.pairing_send_failed
+import com.waytun.app.res.pairing_send_success
+import com.waytun.app.res.subscription_empty
+import com.waytun.app.res.subscription_error
+import com.waytun.app.res.subscription_import_success
+import com.waytun.app.res.subscription_updated_ok
+import com.waytun.app.res.subscription_updating
+import com.waytun.app.res.subscription_url_invalid
+import com.waytun.app.res.tunnel_list_empty
+import com.waytun.app.res.value_not_set
+import com.waytun.app.res.vpn_error_unknown
+import com.waytun.app.res.vpn_permission_denied
+import com.waytun.app.ui.AppContainer
+import com.waytun.app.ui.ConfCheck
+import com.waytun.app.ui.ConfSummary
+import com.waytun.app.ui.UiText
+import com.waytun.app.ui.resolve
 import com.waytun.app.core.pairing.PairingTarget
-import com.waytun.app.core.parser.ConfigErrorKind
-import com.waytun.app.core.parser.ConfigFieldError
 import com.waytun.app.core.parser.ShareLinkList
 import com.waytun.app.core.parser.SingBoxLinkParser
-import com.waytun.app.core.parser.TunnelConfigParser
 import com.waytun.app.core.parser.TunnelDescriptor
-import com.waytun.app.core.parser.TunnelParseResult
 import com.waytun.app.core.parser.TunnelProtocol
 import com.waytun.app.core.text.FlagName
 import com.waytun.app.data.UiPrefs
-import com.waytun.app.core.net.SpeedTest
 import com.waytun.app.data.ping.PingManager
 import com.waytun.app.data.ping.PingResult
 import com.waytun.app.data.subscription.SubscriptionEmptyException
@@ -30,16 +46,8 @@ import com.waytun.app.data.tunnel.TunnelRepository
 import com.waytun.app.vpn.Engine
 import com.waytun.app.vpn.TunnelState
 import com.waytun.app.vpn.VpnBackends
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import com.waytun.app.ui.components.HudState
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.DataOutputStream
-import java.io.IOException
-import java.net.InetSocketAddress
-import java.net.Socket
-import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -53,9 +61,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-private const val CONNECT_TIMEOUT_MS = 8_000
 private const val SAME_ENGINE_RESTART_GAP_MS = 400L
 const val SORT_BY_PING = 1
 const val SORT_ALPHABET = 2
@@ -147,19 +153,17 @@ data class PendingImport(
 )
 
 sealed interface TunnelListEvent {
-    data class Message(val text: String, val isError: Boolean = false) : TunnelListEvent
+    data class Message(val text: UiText, val isError: Boolean = false) : TunnelListEvent
 }
 
-@HiltViewModel
-class TunnelListViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-    private val tunnelRepository: TunnelRepository,
-    private val subscriptionRepository: SubscriptionRepository,
-    private val backends: VpnBackends,
-    private val obfuscation: ObfuscationManager,
-    private val pingManager: PingManager,
-    private val uiPrefs: UiPrefs
-) : ViewModel() {
+class TunnelListViewModel(private val container: AppContainer) : ViewModel() {
+
+    private val tunnelRepository = container.tunnelRepository
+    private val subscriptionRepository = container.subscriptionRepository
+    private val backends = container.backends
+    private val obfuscation = container.obfuscation
+    private val pingManager = container.pingManager
+    private val uiPrefs = container.uiPrefs
 
     private val events = Channel<TunnelListEvent>(Channel.BUFFERED)
     val eventFlow: Flow<TunnelListEvent> = events.receiveAsFlow()
@@ -333,7 +337,7 @@ class TunnelListViewModel @Inject constructor(
         if (_speed.value == SpeedUiState.Running) return
         viewModelScope.launch {
             _speed.value = SpeedUiState.Running
-            val result = SpeedTest.run()
+            val result = runSpeedTest()
             _speed.value = result?.let { SpeedUiState.Done(it.megabitsPerSecond, it.firstByteMillis) } ?: SpeedUiState.Failed
         }
     }
@@ -342,11 +346,11 @@ class TunnelListViewModel @Inject constructor(
         val hero = uiState.value.hero
         val holder = backends.all.firstOrNull { (_, b) -> b.state.value !is TunnelState.Disconnected }
         if (holder != null) {
-            sendDisconnect(context, holder.first)
+            backends.stop(holder.first)
             return
         }
         uiState.value.tunnels.firstOrNull { it.isSelected }?.let { connect(it.id) }
-        if (hero.title == null) sendMessage(context.getString(R.string.tunnel_list_empty))
+        if (hero.title == null) sendMessage(UiText.of(Res.string.tunnel_list_empty))
     }
 
     /** Row tap: select it; if something else is connected, switch over to it immediately (like Happ). */
@@ -359,7 +363,7 @@ class TunnelListViewModel @Inject constructor(
     /** Toggle used after the system VPN-consent dialog returns. */
     fun onToggleTunnel(id: String) {
         val holder = backends.engineHolding(id)
-        if (holder != null) sendDisconnect(context, holder) else connect(id)
+        if (holder != null) backends.stop(holder) else connect(id)
     }
 
     fun isConnectedOrBusy(id: String): Boolean = backends.engineHolding(id) != null
@@ -374,13 +378,13 @@ class TunnelListViewModel @Inject constructor(
             // fully down first (this includes this engine if it holds another tunnel) so that two
             // runtimes never overlap and a stopping service can't swallow the new connect request.
             val running = backends.all.filter { (_, b) -> b.state.value !is TunnelState.Disconnected }.map { it.first }
-            running.forEach { sendDisconnect(context, it) }
+            running.forEach { backends.stop(it) }
             if (running.isNotEmpty()) {
                 backends.awaitStopped(running)
                 delay(SAME_ENGINE_RESTART_GAP_MS)
             }
             uiPrefs.select(id)
-            startConnect(context, engine, id, tunnel.name, settings, obfuscation.profileForConnect())
+            backends.start(engine, id, tunnel.name, settings, obfuscation.profileForConnect())
         }
     }
 
@@ -390,14 +394,13 @@ class TunnelListViewModel @Inject constructor(
     private val lastPingRequest = HashMap<String, Long>()
 
     fun pingAll(ids: Collection<String>? = null) {
-        val now = System.currentTimeMillis()
+        val now = nowMillis()
         val requested = ids ?: uiState.value.tunnels.map { it.id }
-        val targets = synchronized(lastPingRequest) {
-            requested.filter { id ->
-                val recent = now - (lastPingRequest[id] ?: 0L) < PING_COOLDOWN_MS
-                val busy = id in pingingIds.value
-                (!recent && !busy).also { allowed -> if (allowed) lastPingRequest[id] = now }
-            }
+        // Called from the UI thread only.
+        val targets = requested.filter { id ->
+            val recent = now - (lastPingRequest[id] ?: 0L) < PING_COOLDOWN_MS
+            val busy = id in pingingIds.value
+            (!recent && !busy).also { allowed -> if (allowed) lastPingRequest[id] = now }
         }
         if (targets.isEmpty()) return
         viewModelScope.launch {
@@ -415,7 +418,7 @@ class TunnelListViewModel @Inject constructor(
     fun onAddSubscription(url: String, insecureConfirmed: Boolean = false) {
         val trimmed = url.trim()
         if (!SubscriptionRepository.isSubscriptionUrl(trimmed)) {
-            sendError(context.getString(R.string.subscription_url_invalid))
+            sendError(UiText.of(Res.string.subscription_url_invalid))
             return
         }
         // Unencrypted subscriptions expose every connection key in them to anyone on the path,
@@ -448,13 +451,13 @@ class TunnelListViewModel @Inject constructor(
         if (id in refreshingSubscriptions.value) return
         refreshingSubscriptions.value += id
         hudJob?.cancel()
-        _hud.value = HudState.Loading(context.getString(R.string.subscription_updating))
+        _hud.value = HudState.Loading(UiText.of(Res.string.subscription_updating))
         viewModelScope.launch {
             val result = subscriptionRepository.refresh(id, backends.activeTunnelIds())
             refreshingSubscriptions.value -= id
             // An update of a subscription that's already here is not an import: don't report "imported N".
             _hud.value = result.fold(
-                onSuccess = { HudState.Success(context.getString(R.string.subscription_updated_ok)) },
+                onSuccess = { HudState.Success(UiText.of(Res.string.subscription_updated_ok)) },
                 onFailure = { HudState.Failure(subscriptionError(it)) }
             )
             hudJob = launch {
@@ -482,26 +485,26 @@ class TunnelListViewModel @Inject constructor(
 
     fun onDeleteSubscription(id: String) {
         val section = uiState.value.sections.firstOrNull { it.subscription?.id == id } ?: return
-        section.tunnels.forEach { tunnel -> backends.engineHolding(tunnel.id)?.let { sendDisconnect(context, it) } }
+        section.tunnels.forEach { tunnel -> backends.engineHolding(tunnel.id)?.let { backends.stop(it) } }
         viewModelScope.launch {
             subscriptionRepository.delete(id)
-                .onFailure { sendError(it.message ?: context.getString(R.string.vpn_error_unknown)) }
+                .onFailure { sendError(errorText(it)) }
             pingManager.forget(section.tunnels.map { it.id })
         }
     }
 
-    private fun syncMessage(result: SubscriptionSyncResult): String =
+    private fun syncMessage(result: SubscriptionSyncResult): UiText =
         if (result.skipped > 0) {
-            context.getString(R.string.import_bulk_partial, result.imported, result.skipped)
+            UiText.of(Res.string.import_bulk_partial, result.imported, result.skipped)
         } else {
-            context.getString(R.string.subscription_import_success)
+            UiText.of(Res.string.subscription_import_success)
         }
 
-    private fun subscriptionError(error: Throwable): String =
+    private fun subscriptionError(error: Throwable): UiText =
         if (error is SubscriptionEmptyException) {
-            context.getString(R.string.subscription_empty)
+            UiText.of(Res.string.subscription_empty)
         } else {
-            context.getString(R.string.subscription_error, error.message ?: error.javaClass.simpleName)
+            UiText.of(Res.string.subscription_error, error.message ?: error::class.simpleName.orEmpty())
         }
 
     // ---- importing ----------------------------------------------------------------------------
@@ -513,7 +516,7 @@ class TunnelListViewModel @Inject constructor(
     fun onTextImported(suggestedName: String, rawText: String) {
         val text = rawText.trim()
         if (text.isEmpty()) {
-            sendError(context.getString(R.string.import_error_clipboard_empty))
+            sendError(UiText.of(Res.string.import_error_clipboard_empty))
             return
         }
         if (SubscriptionRepository.isSubscriptionUrl(text)) {
@@ -538,9 +541,9 @@ class TunnelListViewModel @Inject constructor(
             val skipped = (totalLinks - imported).coerceAtLeast(0)
             sendMessage(
                 when {
-                    imported == 0 -> context.getString(R.string.import_error_nothing_recognized)
-                    skipped > 0 -> context.getString(R.string.import_bulk_partial, imported, skipped)
-                    else -> context.getString(R.string.config_import_success)
+                    imported == 0 -> UiText.of(Res.string.import_error_nothing_recognized)
+                    skipped > 0 -> UiText.of(Res.string.import_bulk_partial, imported, skipped)
+                    else -> UiText.of(Res.string.config_import_success)
                 }
             )
         }
@@ -548,13 +551,15 @@ class TunnelListViewModel @Inject constructor(
 
     /** Parses the picked/pasted config and, if valid, stages it in [pendingImport] for review. */
     fun onConfigPicked(suggestedName: String, rawText: String) {
-        when (val result = TunnelConfigParser.parse(rawText)) {
-            is TunnelParseResult.WireGuardSuccess -> _pendingImport.value = buildWireGuardPreview(suggestedName, result, rawText)
-            is TunnelParseResult.AmneziaSuccess -> _pendingImport.value = buildAmneziaPreview(suggestedName, result, rawText)
-            is TunnelParseResult.SingBoxSuccess -> _pendingImport.value = buildSingBoxPreview(suggestedName, result, rawText)
-            is TunnelParseResult.Invalid -> sendError(describeInvalid(result.error))
-            is TunnelParseResult.SyntaxError ->
-                sendError(context.getString(R.string.import_error_structure, result.detail))
+        val result = checkConfig(rawText, container.platform)
+        viewModelScope.launch {
+            when (result) {
+                is ConfigCheck.Link -> _pendingImport.value = buildSingBoxPreview(suggestedName, result, rawText)
+                is ConfigCheck.Conf -> when (val check = result.check) {
+                    is ConfCheck.Valid -> _pendingImport.value = buildConfPreview(suggestedName, check, rawText)
+                    else -> sendError(describeConfError(check)!!)
+                }
+            }
         }
     }
 
@@ -562,10 +567,10 @@ class TunnelListViewModel @Inject constructor(
         val pending = _pendingImport.value ?: return
         _pendingImport.value = null
         viewModelScope.launch {
-            val finalName = name.ifBlank { context.getString(R.string.import_default_name) }
+            val finalName = name.ifBlank { UiText.of(Res.string.import_default_name).resolve() }
             tunnelRepository.importTunnel(finalName, pending.protocol, pending.rawConfigText)
-                .onSuccess { sendMessage(context.getString(R.string.config_import_success)) }
-                .onFailure { sendError(it.message ?: context.getString(R.string.vpn_error_unknown)) }
+                .onSuccess { sendMessage(UiText.of(Res.string.config_import_success)) }
+                .onFailure { sendError(errorText(it)) }
         }
     }
 
@@ -574,20 +579,20 @@ class TunnelListViewModel @Inject constructor(
     }
 
     fun onDeleteTunnel(id: String) {
-        backends.engineHolding(id)?.let { sendDisconnect(context, it) }
+        backends.engineHolding(id)?.let { backends.stop(it) }
         viewModelScope.launch {
             tunnelRepository.deleteTunnel(id)
-                .onFailure { sendError(it.message ?: context.getString(R.string.vpn_error_unknown)) }
+                .onFailure { sendError(errorText(it)) }
             pingManager.forget(listOf(id))
         }
     }
 
     fun onVpnPermissionDenied() {
-        sendError(context.getString(R.string.vpn_permission_denied))
+        sendError(UiText.of(Res.string.vpn_permission_denied))
     }
 
     fun onImportFileReadFailed() {
-        sendError(context.getString(R.string.import_error_file_read))
+        sendError(UiText.of(Res.string.import_error_file_read))
     }
 
     /** Sends [tunnelId]'s decrypted config to a device that displayed a "receive via QR" code. */
@@ -606,140 +611,50 @@ class TunnelListViewModel @Inject constructor(
             val text = payload()
             if (text == null) {
                 _isSendingTunnel.value = false
-                sendError(context.getString(R.string.vpn_error_unknown))
+                sendError(UiText.of(Res.string.vpn_error_unknown))
                 return@launch
             }
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    // If one of our own VPN tunnels is active, the default route goes through
-                    // the tun interface, which has no path back to a peer on the local LAN.
-                    // Bind this socket to the underlying Wi-Fi/Ethernet network explicitly so
-                    // pairing still works while connected.
-                    val lanNetwork = findLanNetwork()
-                    Socket().use { socket ->
-                        lanNetwork?.let { it.bindSocket(socket) }
-                        socket.connect(InetSocketAddress(target.ip, target.port), CONNECT_TIMEOUT_MS)
-                        socket.soTimeout = 15_000
-                        val (iv, ciphertext) = PairingCrypto.encrypt(target.keyBytes, text.toByteArray(Charsets.UTF_8))
-                        val output = DataOutputStream(socket.getOutputStream())
-                        output.writeInt(iv.size + ciphertext.size)
-                        output.write(iv)
-                        output.write(ciphertext)
-                        output.flush()
-                    }
-                }
-            }
+            val result = container.platform.sendToDevice(target, text)
             _isSendingTunnel.value = false
             result
-                .onSuccess { sendMessage(context.getString(R.string.pairing_send_success)) }
+                .onSuccess { sendMessage(UiText.of(Res.string.pairing_send_success)) }
                 .onFailure { e ->
-                    sendError(
-                        context.getString(
-                            R.string.pairing_send_failed,
-                            (e as? IOException)?.message ?: e.message ?: context.getString(R.string.pairing_error_generic)
-                        )
-                    )
+                    sendError(UiText.of(Res.string.pairing_send_failed, e.message ?: UiText.of(Res.string.pairing_error_generic)))
                 }
         }
     }
 
-    /** The first non-VPN Wi-Fi or Ethernet network, used to route around an active VPN tunnel. */
-    private fun findLanNetwork(): android.net.Network? {
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java) ?: return null
-        return connectivityManager.allNetworks.firstOrNull { network ->
-            val caps = connectivityManager.getNetworkCapabilities(network)
-            caps != null &&
-                !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
-                (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
-        }
-    }
+    private fun errorText(e: Throwable): UiText = e.message?.let { UiText.Raw(it) } ?: UiText.of(Res.string.vpn_error_unknown)
 
-    private fun sendMessage(text: String) {
+    private fun sendMessage(text: UiText) {
         viewModelScope.launch { events.send(TunnelListEvent.Message(text)) }
     }
 
-    private fun sendError(text: String) {
+    private fun sendError(text: UiText) {
         viewModelScope.launch { events.send(TunnelListEvent.Message(text, isError = true)) }
     }
 
-    private fun buildWireGuardPreview(
-        suggestedName: String,
-        success: TunnelParseResult.WireGuardSuccess,
-        rawText: String
-    ): PendingImport {
-        val iface = success.config.getInterface()
-        val notSet = context.getString(R.string.value_not_set)
-        val addresses = iface.getAddresses().joinToString(", ") { it.toString() }.ifBlank { notSet }
-        val dnsEntries = iface.getDnsServers().map { it.hostAddress } + iface.getDnsSearchDomains()
-        val dns = dnsEntries.joinToString(", ").ifBlank { notSet }
-        val mtu = if (iface.getMtu().isPresent) iface.getMtu().get().toString() else null
-        val firstPeer = success.config.getPeers().firstOrNull()
-        val endpoint = firstPeer?.getEndpoint()?.let { if (it.isPresent) it.get().toString() else null } ?: notSet
-        val allowedIps = firstPeer?.getAllowedIps()?.joinToString(", ") { it.toString() }?.ifBlank { notSet } ?: notSet
-
+    private suspend fun buildConfPreview(suggestedName: String, check: ConfCheck.Valid, rawText: String): PendingImport {
+        val summary: ConfSummary = check.summary
+        val notSet = UiText.of(Res.string.value_not_set).resolve()
         return PendingImport(
-            suggestedName = suggestedName.ifBlank { context.getString(R.string.import_default_name) },
-            protocol = TunnelProtocol.WIREGUARD,
-            addresses = addresses,
-            dns = dns,
-            endpoint = endpoint,
-            allowedIps = allowedIps,
-            mtu = mtu,
-            obfuscation = null,
+            suggestedName = suggestedName.ifBlank { UiText.of(Res.string.import_default_name).resolve() },
+            protocol = if (check.amnezia) TunnelProtocol.AMNEZIA_WG else TunnelProtocol.WIREGUARD,
+            addresses = summary.addresses.joinToString(", ").ifBlank { notSet },
+            dns = summary.dns.joinToString(", ").ifBlank { notSet },
+            endpoint = summary.endpoint ?: notSet,
+            allowedIps = summary.allowedIps.joinToString(", ").ifBlank { notSet },
+            mtu = summary.mtu?.toString(),
+            obfuscation = summary.obfuscation,
             rawConfigText = rawText
         )
     }
 
-    private fun buildAmneziaPreview(
-        suggestedName: String,
-        success: TunnelParseResult.AmneziaSuccess,
-        rawText: String
-    ): PendingImport {
-        val iface = success.config.getInterface()
-        val notSet = context.getString(R.string.value_not_set)
-        val addresses = iface.getAddresses().joinToString(", ") { it.toString() }.ifBlank { notSet }
-        val dnsEntries = iface.getDnsServers().map { it.hostAddress } + iface.getDnsSearchDomains()
-        val dns = dnsEntries.joinToString(", ").ifBlank { notSet }
-        val mtu = if (iface.getMtu().isPresent) iface.getMtu().get().toString() else null
-        val firstPeer = success.config.getPeers().firstOrNull()
-        val endpoint = firstPeer?.getEndpoint()?.let { if (it.isPresent) it.get().toString() else null } ?: notSet
-        val allowedIps = firstPeer?.getAllowedIps()?.joinToString(", ") { it.toString() }?.ifBlank { notSet } ?: notSet
-
-        val obfuscationParts = buildList {
-            if (iface.getJunkPacketCount().isPresent) add("Jc=${iface.getJunkPacketCount().get()}")
-            if (iface.getJunkPacketMinSize().isPresent) add("Jmin=${iface.getJunkPacketMinSize().get()}")
-            if (iface.getJunkPacketMaxSize().isPresent) add("Jmax=${iface.getJunkPacketMaxSize().get()}")
-            if (iface.getInitPacketJunkSize().isPresent) add("S1=${iface.getInitPacketJunkSize().get()}")
-            if (iface.getResponsePacketJunkSize().isPresent) add("S2=${iface.getResponsePacketJunkSize().get()}")
-            if (iface.getInitPacketMagicHeader().isPresent) add("H1")
-            if (iface.getResponsePacketMagicHeader().isPresent) add("H2")
-            if (iface.getUnderloadPacketMagicHeader().isPresent) add("H3")
-            if (iface.getTransportPacketMagicHeader().isPresent) add("H4")
-        }
-
-        return PendingImport(
-            suggestedName = suggestedName.ifBlank { context.getString(R.string.import_default_name) },
-            protocol = TunnelProtocol.AMNEZIA_WG,
-            addresses = addresses,
-            dns = dns,
-            endpoint = endpoint,
-            allowedIps = allowedIps,
-            mtu = mtu,
-            obfuscation = obfuscationParts.joinToString(", ").ifBlank { null },
-            rawConfigText = rawText
-        )
-    }
-
-    private fun buildSingBoxPreview(
-        suggestedName: String,
-        success: TunnelParseResult.SingBoxSuccess,
-        rawText: String
-    ): PendingImport {
+    private suspend fun buildSingBoxPreview(suggestedName: String, success: ConfigCheck.Link, rawText: String): PendingImport {
         val link = success.link
-        val notSet = context.getString(R.string.value_not_set)
+        val notSet = UiText.of(Res.string.value_not_set).resolve()
         return PendingImport(
-            suggestedName = suggestedName.ifBlank { link.remark.ifBlank { context.getString(R.string.import_default_name) } },
+            suggestedName = suggestedName.ifBlank { link.remark.ifBlank { UiText.of(Res.string.import_default_name).resolve() } },
             protocol = link.protocol,
             addresses = notSet,
             dns = notSet,
@@ -749,15 +664,6 @@ class TunnelListViewModel @Inject constructor(
             obfuscation = TunnelDescriptor.describe(link),
             rawConfigText = rawText
         )
-    }
-
-    private fun describeInvalid(error: ConfigFieldError): String {
-        val field = error.fieldName.ifBlank { context.getString(R.string.import_error_generic_field) }
-        return when (error.kind) {
-            ConfigErrorKind.MISSING -> context.getString(R.string.import_error_field_missing, field)
-            ConfigErrorKind.INVALID -> context.getString(R.string.import_error_field_invalid, field)
-            ConfigErrorKind.STRUCTURE -> context.getString(R.string.import_error_structure, field)
-        }
     }
 }
 

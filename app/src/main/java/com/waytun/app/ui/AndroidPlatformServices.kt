@@ -2,9 +2,14 @@ package com.waytun.app.ui
 
 import android.app.Activity
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import com.waytun.app.BuildConfig
 import com.waytun.app.core.device.DeviceIdentity
 import com.waytun.app.core.language.AppLanguage
+import com.waytun.app.core.pairing.PairingCrypto
+import com.waytun.app.core.pairing.PairingTarget
 import com.waytun.app.core.parser.TunnelConfigParser
 import com.waytun.app.core.parser.TunnelParseResult
 import com.waytun.app.update.ApkDownloader
@@ -12,7 +17,10 @@ import com.waytun.app.update.ApkInstaller
 import com.waytun.app.update.DownloadProgress
 import com.waytun.app.update.ReleaseInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.DataOutputStream
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.lang.ref.WeakReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -78,6 +86,39 @@ class AndroidPlatformServices @Inject constructor(
             withContext(Dispatchers.IO) { ApkInstaller.install(context, File(path)) }
     }
 
+    override suspend fun sendToDevice(target: PairingTarget, text: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            // If one of our own VPN tunnels is active, the default route goes through
+            // the tun interface, which has no path back to a peer on the local LAN.
+            // Bind this socket to the underlying Wi-Fi/Ethernet network explicitly so
+            // pairing still works while connected.
+            val lanNetwork = findLanNetwork()
+            Socket().use { socket ->
+                lanNetwork?.let { it.bindSocket(socket) }
+                socket.connect(InetSocketAddress(target.ip, target.port), PAIRING_CONNECT_TIMEOUT_MS)
+                socket.soTimeout = 15_000
+                val (iv, ciphertext) = PairingCrypto.encrypt(target.keyBytes, text.toByteArray(Charsets.UTF_8))
+                val output = DataOutputStream(socket.getOutputStream())
+                output.writeInt(iv.size + ciphertext.size)
+                output.write(iv)
+                output.write(ciphertext)
+                output.flush()
+            }
+        }
+    }
+
+    /** The first non-VPN Wi-Fi or Ethernet network, used to route around an active VPN tunnel. */
+    private fun findLanNetwork(): Network? {
+        val connectivityManager = context.getSystemService(ConnectivityManager::class.java) ?: return null
+        return connectivityManager.allNetworks.firstOrNull { network ->
+            val caps = connectivityManager.getNetworkCapabilities(network)
+            caps != null &&
+                !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+        }
+    }
+
     override fun checkConf(rawText: String): ConfCheck = when (val result = TunnelConfigParser.parseConf(rawText)) {
         is TunnelParseResult.WireGuardSuccess -> {
             val iface = result.config.getInterface()
@@ -125,3 +166,5 @@ class AndroidPlatformServices @Inject constructor(
         is TunnelParseResult.SingBoxSuccess -> ConfCheck.SyntaxError("Share link")
     }
 }
+
+private const val PAIRING_CONNECT_TIMEOUT_MS = 8_000

@@ -1,6 +1,42 @@
 package com.waytun.app.ui.tunnels
 
-import android.text.format.DateUtils
+import com.waytun.app.res.Res
+import com.waytun.app.res.byte_units
+import com.waytun.app.res.action_delete
+import com.waytun.app.res.action_details
+import com.waytun.app.res.action_pin
+import com.waytun.app.res.action_ping
+import com.waytun.app.res.action_ping_all
+import com.waytun.app.res.action_refresh
+import com.waytun.app.res.action_subscription_settings
+import com.waytun.app.res.action_unpin
+import com.waytun.app.res.ago_just_now
+import com.waytun.app.res.ago_seconds
+import com.waytun.app.res.hero_no_tunnel
+import com.waytun.app.res.hero_obfuscation_off
+import com.waytun.app.res.hero_obfuscation_on
+import com.waytun.app.res.hero_status_connected
+import com.waytun.app.res.hero_status_connecting
+import com.waytun.app.res.hero_status_error
+import com.waytun.app.res.hero_status_idle
+import com.waytun.app.res.speed_check
+import com.waytun.app.res.speed_failed
+import com.waytun.app.res.speed_result
+import com.waytun.app.res.speed_running
+import com.waytun.app.res.subscription_bot
+import com.waytun.app.res.subscription_copy_link
+import com.waytun.app.res.subscription_days_left
+import com.waytun.app.res.subscription_description
+import com.waytun.app.res.subscription_email
+import com.waytun.app.res.subscription_expired
+import com.waytun.app.res.subscription_expires
+import com.waytun.app.res.subscription_rename
+import com.waytun.app.res.subscription_send_to_tv
+import com.waytun.app.res.subscription_support
+import com.waytun.app.res.subscription_updated
+import com.waytun.app.res.subscription_usage
+import com.waytun.app.res.subscription_usage_unlimited
+import com.waytun.app.res.tunnel_ping_ms
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.shrinkVertically
@@ -97,14 +133,13 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.res.stringArrayResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringArrayResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.waytun.app.R
 import com.waytun.app.data.ping.PingResult
 import com.waytun.app.data.subscription.SubscriptionUsage
 import com.waytun.app.ui.icons.AppIcons
@@ -112,9 +147,10 @@ import com.waytun.app.ui.theme.Sky
 import com.waytun.app.ui.theme.WayTunColors
 import com.waytun.app.ui.theme.WayTunTheme
 import com.waytun.app.ui.tv.tvFocusBorder
-import java.text.DateFormat
-import java.text.NumberFormat
-import java.util.Date
+import com.waytun.app.core.time.nowMillis
+import com.waytun.app.ui.platform.formatBytes
+import com.waytun.app.ui.platform.formatDateSkeleton
+import com.waytun.app.ui.platform.relativeTimeSpan
 import kotlinx.coroutines.delay
 
 // ---- hero ------------------------------------------------------------------------------------
@@ -168,10 +204,10 @@ fun HeroCard(
     val onHero = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color(0xFF14183A) else Color.White
     val status = stringResource(
         when (hero.phase) {
-            HeroPhase.IDLE -> R.string.hero_status_idle
-            HeroPhase.CONNECTING -> R.string.hero_status_connecting
-            HeroPhase.CONNECTED -> R.string.hero_status_connected
-            HeroPhase.ERROR -> R.string.hero_status_error
+            HeroPhase.IDLE -> Res.string.hero_status_idle
+            HeroPhase.CONNECTING -> Res.string.hero_status_connecting
+            HeroPhase.CONNECTED -> Res.string.hero_status_connected
+            HeroPhase.ERROR -> Res.string.hero_status_error
         }
     )
     val statusColor by animateColorAsState(
@@ -233,7 +269,7 @@ fun HeroCard(
                                 )
                         ) {
                             Text(
-                                hero.title ?: stringResource(R.string.hero_no_tunnel),
+                                hero.title ?: stringResource(Res.string.hero_no_tunnel),
                                 style = MaterialTheme.typography.titleLarge,
                                 color = onHero,
                                 maxLines = 1,
@@ -279,7 +315,7 @@ fun HeroCard(
                     hero.protocol?.let { HeroPill(it.displayName(), onHero, modifier = Modifier.weight(1f), centered = true) }
                 }
                 HeroPill(
-                    stringResource(if (hero.obfuscationOn) R.string.hero_obfuscation_on else R.string.hero_obfuscation_off),
+                    stringResource(if (hero.obfuscationOn) Res.string.hero_obfuscation_on else Res.string.hero_obfuscation_off),
                     onHero,
                     dim = !hero.obfuscationOn,
                     modifier = Modifier.fillMaxWidth(),
@@ -372,11 +408,11 @@ private fun SpeedPill(speed: SpeedUiState, onHero: Color, onClick: () -> Unit) {
     val colors = WayTunTheme.colors
     val running = speed == SpeedUiState.Running
     val (text, tint) = when (speed) {
-        SpeedUiState.Idle -> stringResource(R.string.speed_check) to onHero
-        SpeedUiState.Running -> stringResource(R.string.speed_running) to onHero
-        SpeedUiState.Failed -> stringResource(R.string.speed_failed) to colors.danger
+        SpeedUiState.Idle -> stringResource(Res.string.speed_check) to onHero
+        SpeedUiState.Running -> stringResource(Res.string.speed_running) to onHero
+        SpeedUiState.Failed -> stringResource(Res.string.speed_failed) to colors.danger
         is SpeedUiState.Done -> stringResource(
-            R.string.speed_result, speed.megabitsPerSecond.toInt(), speed.firstByteMillis.toInt()
+            Res.string.speed_result, speed.megabitsPerSecond.toInt(), speed.firstByteMillis.toInt()
         ) to when {
             speed.megabitsPerSecond >= 25 -> colors.connected
             speed.megabitsPerSecond >= 8 -> colors.connecting
@@ -409,14 +445,15 @@ private fun SpeedPill(speed: SpeedUiState, onHero: Color, onClick: () -> Unit) {
 /** A ticking "01:23:45" since [sinceMillis]. */
 @Composable
 private fun connectedFor(sinceMillis: Long): String {
-    val now by produceState(System.currentTimeMillis(), sinceMillis) {
+    val now by produceState(nowMillis(), sinceMillis) {
         while (true) {
-            value = System.currentTimeMillis()
+            value = nowMillis()
             delay(1_000)
         }
     }
     val seconds = ((now - sinceMillis) / 1000).coerceAtLeast(0)
-    return "%02d:%02d:%02d".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
+    fun two(value: Long) = value.toString().padStart(2, '0')
+    return "${two(seconds / 3600)}:${two(seconds % 3600 / 60)}:${two(seconds % 60)}"
 }
 
 /**
@@ -430,8 +467,8 @@ private fun rememberPillsWidth(): Dp {
     val density = LocalDensity.current
     val plain = MaterialTheme.typography.labelMedium
     val tabular = plain.copy(fontFeatureSettings = "tnum")
-    val on = stringResource(R.string.hero_obfuscation_on)
-    val off = stringResource(R.string.hero_obfuscation_off)
+    val on = stringResource(Res.string.hero_obfuscation_on)
+    val off = stringResource(Res.string.hero_obfuscation_off)
     return remember(plain, on, off, density) {
         fun textWidth(text: String, style: TextStyle) = measurer.measure(text, style, maxLines = 1).size.width
         val padding = with(density) { 24.dp.toPx() } // 12.dp each side, per pill
@@ -531,7 +568,7 @@ fun TunnelRow(
             TapTarget(onClick = onInfo, size = 38.dp) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = stringResource(R.string.action_details),
+                    contentDescription = stringResource(Res.string.action_details),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(26.dp)
                 )
@@ -550,7 +587,7 @@ private fun PingChip(tunnel: TunnelListItem, onPing: () -> Unit) {
         ping == null -> null to MaterialTheme.colorScheme.onSurfaceVariant
         ping.udpOnly -> "UDP" to MaterialTheme.colorScheme.onSurfaceVariant
         millis == null -> "—" to colors.danger
-        else -> stringResource(R.string.tunnel_ping_ms, millis) to colors.ping(millis)
+        else -> stringResource(Res.string.tunnel_ping_ms, millis) to colors.ping(millis)
     }
     Box(
         contentAlignment = Alignment.Center,
@@ -564,7 +601,7 @@ private fun PingChip(tunnel: TunnelListItem, onPing: () -> Unit) {
     ) {
         when {
             tunnel.isPinging || tunnel.isBusy -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = tint)
-            text == null -> Icon(AppIcons.Signal, contentDescription = stringResource(R.string.action_ping), tint = tint, modifier = Modifier.size(20.dp))
+            text == null -> Icon(AppIcons.Signal, contentDescription = stringResource(Res.string.action_ping), tint = tint, modifier = Modifier.size(20.dp))
             else -> Surface(shape = RoundedCornerShape(50), color = tint.copy(alpha = 0.16f)) {
                 Text(
                     text,
@@ -605,7 +642,7 @@ private fun Tag(text: String, color: Color = Color.Unspecified) {
 // ---- subscriptions ---------------------------------------------------------------------------
 
 /** One quick-link pill under a subscription: a bot-link gets the Telegram glyph, support/email stay plain text. */
-private data class LinkButton(val label: Int, val url: String, val icon: ImageVector? = null, val iconTint: Color? = null)
+private data class LinkButton(val label: org.jetbrains.compose.resources.StringResource, val url: String, val icon: ImageVector? = null, val iconTint: Color? = null)
 
 /** Fold and unfold use the same duration and easing, so the card closes and opens as mirror images. */
 private const val FOLD_MILLIS = 380
@@ -664,7 +701,7 @@ fun SubscriptionCard(
                     if (subscription.updatedAtEpochMillis > 0) {
                         val ago = rememberRelativeAgo(subscription.updatedAtEpochMillis)
                         Text(
-                            stringResource(R.string.subscription_updated, ago),
+                            stringResource(Res.string.subscription_updated, ago),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
@@ -672,7 +709,7 @@ fun SubscriptionCard(
                     }
                 }
                 TapTarget(onClick = onPingAll, size = 40.dp) {
-                    Icon(AppIcons.Signal, contentDescription = stringResource(R.string.action_ping_all), modifier = Modifier.size(19.dp))
+                    Icon(AppIcons.Signal, contentDescription = stringResource(Res.string.action_ping_all), modifier = Modifier.size(19.dp))
                 }
                 if (subscription.isRefreshing) {
                     Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
@@ -680,7 +717,7 @@ fun SubscriptionCard(
                     }
                 } else {
                     TapTarget(onClick = onRefresh, size = 40.dp) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh), modifier = Modifier.size(19.dp))
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(Res.string.action_refresh), modifier = Modifier.size(19.dp))
                     }
                 }
                 Box {
@@ -689,39 +726,39 @@ fun SubscriptionCard(
                     }
                     GlassDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(if (subscription.pinned) R.string.action_unpin else R.string.action_pin)) },
+                            text = { Text(stringResource(if (subscription.pinned) Res.string.action_unpin else Res.string.action_pin)) },
                             leadingIcon = { Icon(AppIcons.Pin, null, modifier = Modifier.size(20.dp)) },
                             onClick = { menuOpen = false; onTogglePin() }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.subscription_rename)) },
+                            text = { Text(stringResource(Res.string.subscription_rename)) },
                             leadingIcon = { Icon(Icons.Default.Edit, null) },
                             onClick = { menuOpen = false; onRename() }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.subscription_copy_link)) },
+                            text = { Text(stringResource(Res.string.subscription_copy_link)) },
                             leadingIcon = { Icon(AppIcons.ContentCopy, null, modifier = Modifier.size(20.dp)) },
                             onClick = { menuOpen = false; onCopyLink() }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_ping_all)) },
+                            text = { Text(stringResource(Res.string.action_ping_all)) },
                             leadingIcon = { Icon(AppIcons.Signal, null, modifier = Modifier.size(20.dp)) },
                             onClick = { menuOpen = false; onPingAll() }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_subscription_settings)) },
+                            text = { Text(stringResource(Res.string.action_subscription_settings)) },
                             leadingIcon = { Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp)) },
                             onClick = { menuOpen = false; onOpenSettings() }
                         )
                         if (onSendToTv != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.subscription_send_to_tv)) },
+                                text = { Text(stringResource(Res.string.subscription_send_to_tv)) },
                                 leadingIcon = { Icon(AppIcons.Tv, null, modifier = Modifier.size(20.dp)) },
                                 onClick = { menuOpen = false; onSendToTv() }
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_delete), color = colors.danger) },
+                            text = { Text(stringResource(Res.string.action_delete), color = colors.danger) },
                             leadingIcon = { Icon(Icons.Default.Delete, null, tint = colors.danger) },
                             onClick = { menuOpen = false; onDelete() }
                         )
@@ -747,9 +784,9 @@ fun SubscriptionCard(
                 subscription.announce?.takeIf { it.isNotBlank() }?.let { Announcement(it, subscription.announceUrl, onOpenUrl) }
                 subscription.description?.takeIf { it.isNotBlank() }?.let { Description(it) }
                 val links = listOfNotNull(
-                    subscription.botLink?.let { LinkButton(R.string.subscription_bot, it, AppIcons.Send, Sky) },
-                    subscription.supportUrl?.let { LinkButton(R.string.subscription_support, it) },
-                    subscription.supportEmail?.let { LinkButton(R.string.subscription_email, "mailto:$it") }
+                    subscription.botLink?.let { LinkButton(Res.string.subscription_bot, it, AppIcons.Send, Sky) },
+                    subscription.supportUrl?.let { LinkButton(Res.string.subscription_support, it) },
+                    subscription.supportEmail?.let { LinkButton(Res.string.subscription_email, "mailto:$it") }
                 )
                 if (links.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -800,20 +837,18 @@ fun SubscriptionCard(
  */
 @Composable
 private fun rememberRelativeAgo(epochMillis: Long): String {
-    var now by remember(epochMillis) { mutableStateOf(System.currentTimeMillis()) }
+    var now by remember(epochMillis) { mutableStateOf(nowMillis()) }
     LaunchedEffect(epochMillis) {
         while (true) {
-            now = System.currentTimeMillis()
+            now = nowMillis()
             delay(if (now - epochMillis < 60_000L) 1_000L else 30_000L)
         }
     }
     val diffSeconds = (now - epochMillis).coerceAtLeast(0) / 1000
     return when {
-        diffSeconds < 1 -> stringResource(R.string.ago_just_now)
-        diffSeconds < 60 -> stringResource(R.string.ago_seconds, diffSeconds)
-        else -> DateUtils.getRelativeTimeSpanString(
-            epochMillis, now, DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE
-        ).toString()
+        diffSeconds < 1 -> stringResource(Res.string.ago_just_now)
+        diffSeconds < 60 -> stringResource(Res.string.ago_seconds, diffSeconds)
+        else -> relativeTimeSpan(epochMillis, now, 60_000L)
     }
 }
 
@@ -832,7 +867,7 @@ private fun trafficTint(fraction: Float, colors: WayTunColors): Color {
 @Composable
 private fun UsageBlock(usage: SubscriptionUsage) {
     val colors = WayTunTheme.colors
-    val units = stringArrayResource(R.array.byte_units)
+    val units = stringArrayResource(Res.array.byte_units)
     val used = (usage.uploadBytes ?: 0) + (usage.downloadBytes ?: 0)
     if (usage.uploadBytes == null && usage.downloadBytes == null) return
     val total = usage.totalBytes?.takeIf { it > 0 }
@@ -857,8 +892,8 @@ private fun UsageBlock(usage: SubscriptionUsage) {
             }
         }
         Text(
-            if (total != null) stringResource(R.string.subscription_usage, formatBytes(used, units), formatBytes(total, units))
-            else stringResource(R.string.subscription_usage_unlimited, formatBytes(used, units)),
+            if (total != null) stringResource(Res.string.subscription_usage, formatBytes(used, units), formatBytes(total, units))
+            else stringResource(Res.string.subscription_usage_unlimited, formatBytes(used, units)),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = tint,
@@ -876,18 +911,15 @@ private fun MetaRow(usage: SubscriptionUsage?) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         usage?.expireEpochSeconds?.let { seconds ->
-            val daysLeft = ((seconds * 1000 - System.currentTimeMillis()) / DateUtils.DAY_IN_MILLIS).toInt()
-            val date = android.icu.text.SimpleDateFormat(
-                android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "d MMM yyyy"),
-                java.util.Locale.getDefault()
-            ).format(Date(seconds * 1000))
+            val daysLeft = ((seconds * 1000 - nowMillis()) / 86_400_000L).toInt()
+            val date = formatDateSkeleton(seconds * 1000, "d MMM yyyy")
             when {
-                daysLeft < 0 -> Tag(stringResource(R.string.subscription_expired), colors.danger)
+                daysLeft < 0 -> Tag(stringResource(Res.string.subscription_expired), colors.danger)
                 else -> {
                     // The date is plain information; only the remaining time changes color as it runs out.
-                    Tag(stringResource(R.string.subscription_expires, date))
+                    Tag(stringResource(Res.string.subscription_expires, date))
                     Tag(
-                        stringResource(R.string.subscription_days_left, daysLeft),
+                        stringResource(Res.string.subscription_days_left, daysLeft),
                         when {
                             daysLeft <= 3 -> colors.danger
                             daysLeft <= 14 -> colors.connecting
@@ -946,7 +978,7 @@ private fun Description(text: String) {
             .animateContentSize()
     ) {
         Text(
-            stringResource(R.string.subscription_description),
+            stringResource(Res.string.subscription_description),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold
@@ -962,16 +994,3 @@ private fun Description(text: String) {
     }
 }
 
-/** Binary (1024-based) units, matching how subscription panels report traffic limits. */
-private fun formatBytes(bytes: Long, units: Array<String>): String {
-    var value = bytes.coerceAtLeast(0).toDouble()
-    var unit = 0
-    while (value >= 1024 && unit < units.lastIndex) {
-        value /= 1024
-        unit++
-    }
-    val number = NumberFormat.getNumberInstance().apply {
-        maximumFractionDigits = if (unit > 0 && value < 10) 1 else 0
-    }.format(value)
-    return "$number ${units[unit]}"
-}
