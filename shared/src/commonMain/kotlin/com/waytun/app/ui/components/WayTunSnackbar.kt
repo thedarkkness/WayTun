@@ -73,7 +73,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.waytun.app.ui.theme.WayTunTheme
-import java.util.WeakHashMap
+import com.waytun.app.core.time.nowMillis
 
 class WayTunSnackbarVisuals(
     override val message: String,
@@ -90,17 +90,18 @@ private const val REPEAT_WINDOW_MILLIS = 2_500L
 /** How long a toast stays on screen. */
 private const val TOAST_MILLIS = 3_200L
 
-private val lastShown = WeakHashMap<SnackbarHostState, Pair<String, Long>>()
+/** The last toast: its host, text and time. Toasts are shown from the UI thread only, so one slot needs no lock. */
+private var lastShown: Triple<SnackbarHostState, String, Long>? = null
 
 /**
  * Shows [message] as a toast, with anti-spam: an identical message that appeared a moment ago is ignored, and a
  * different one replaces whatever is on screen right away instead of queueing up behind it.
  */
 suspend fun SnackbarHostState.showWayTun(message: String, isError: Boolean = false) {
-    val now = System.currentTimeMillis()
-    val previous = synchronized(lastShown) { lastShown[this] }
-    if (previous != null && previous.first == message && now - previous.second < REPEAT_WINDOW_MILLIS) return
-    synchronized(lastShown) { lastShown[this] = message to now }
+    val now = nowMillis()
+    val previous = lastShown
+    if (previous != null && previous.first === this && previous.second == message && now - previous.third < REPEAT_WINDOW_MILLIS) return
+    lastShown = Triple(this, message, now)
     currentSnackbarData?.dismiss()
     showSnackbar(WayTunSnackbarVisuals(message, isError))
 }

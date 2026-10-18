@@ -1,10 +1,24 @@
 package com.waytun.app.ui.logs
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.text.format.DateUtils
-import android.text.format.Formatter
-import androidx.activity.compose.BackHandler
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_back
+import com.waytun.app.res.action_copy
+import com.waytun.app.res.logs_clear
+import com.waytun.app.res.logs_connection
+import com.waytun.app.res.logs_copied
+import com.waytun.app.res.logs_empty
+import com.waytun.app.res.logs_subscription
+import com.waytun.app.res.logs_title
+import com.waytun.app.res.logs_xray_debug
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.waytun.app.core.time.nowMillis
+import com.waytun.app.res.byte_units
+import com.waytun.app.ui.platform.PlatformBackHandler
+import com.waytun.app.ui.platform.formatBytes
+import com.waytun.app.ui.platform.relativeTimeSpan
+import kotlinx.coroutines.IO
+import org.jetbrains.compose.resources.stringArrayResource
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -48,12 +62,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.waytun.app.R
 import com.waytun.app.core.log.AppLog
 import com.waytun.app.core.log.LogFileInfo
 import com.waytun.app.ui.components.GlassCard
@@ -68,7 +80,7 @@ import kotlinx.coroutines.withContext
 /** The journal screen: the list of logs, and one log opened for reading, copying or clearing. */
 @Composable
 fun LogsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
@@ -76,11 +88,11 @@ fun LogsScreen(onBack: () -> Unit) {
         value = withContext(Dispatchers.IO) { AppLog.files() }
     }
     val snackbar = remember { SnackbarHostState() }
-    val copiedText = stringResource(R.string.logs_copied)
+    val copiedText = stringResource(Res.string.logs_copied)
 
     // Back closes an open log first, then the screen - the arrow and the gesture behave the same.
     val goBack = { if (open != null) open = null else onBack() }
-    BackHandler(onBack = goBack)
+    PlatformBackHandler(onBack = goBack)
 
     val text by produceState("", open, reload) {
         val name = open
@@ -88,18 +100,18 @@ fun LogsScreen(onBack: () -> Unit) {
     }
 
     GlassScaffold(
-        title = { Text(open?.let { titleOf(it) } ?: stringResource(R.string.logs_title), maxLines = 1) },
+        title = { Text(open?.let { titleOf(it) } ?: stringResource(Res.string.logs_title), maxLines = 1) },
         navigationIcon = {
             IconButton(onClick = goBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
             }
         },
         actions = {
             if (open != null) {
                 IconButton(onClick = {
-                    context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("log", text))
+                    clipboard.setText(AnnotatedString(text))
                     scope.launch { snackbar.showWayTun(copiedText) }
-                }) { Icon(AppIcons.ContentCopy, contentDescription = stringResource(R.string.action_copy)) }
+                }) { Icon(AppIcons.ContentCopy, contentDescription = stringResource(Res.string.action_copy)) }
                 IconButton(onClick = {
                     open?.let { name ->
                         scope.launch {
@@ -107,7 +119,7 @@ fun LogsScreen(onBack: () -> Unit) {
                             reload++
                         }
                     }
-                }) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.logs_clear)) }
+                }) { Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.logs_clear)) }
             }
         }
     ) { padding ->
@@ -135,15 +147,15 @@ fun LogsScreen(onBack: () -> Unit) {
 @Composable
 private fun titleOf(name: String): String = stringResource(
     when (name) {
-        AppLog.SUBSCRIPTION -> R.string.logs_subscription
-        AppLog.CONNECTION -> R.string.logs_connection
-        else -> R.string.logs_xray_debug
+        AppLog.SUBSCRIPTION -> Res.string.logs_subscription
+        AppLog.CONNECTION -> Res.string.logs_connection
+        else -> Res.string.logs_xray_debug
     }
 )
 
 @Composable
 private fun LogList(files: List<LogFileInfo>, top: androidx.compose.ui.unit.Dp, bottom: androidx.compose.ui.unit.Dp, onOpen: (String) -> Unit) {
-    val context = LocalContext.current
+    val byteUnits = stringArrayResource(Res.array.byte_units)
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
@@ -162,8 +174,8 @@ private fun LogList(files: List<LogFileInfo>, top: androidx.compose.ui.unit.Dp, 
                         Column(Modifier.weight(1f)) {
                             Text(titleOf(file.name), style = MaterialTheme.typography.titleMedium)
                             Text(
-                                Formatter.formatShortFileSize(context, file.bytes) + if (file.modifiedMillis > 0) " · " +
-                                    DateUtils.getRelativeTimeSpanString(file.modifiedMillis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS) else "",
+                                formatBytes(file.bytes, byteUnits) + if (file.modifiedMillis > 0) " · " +
+                                    relativeTimeSpan(file.modifiedMillis, nowMillis(), 60_000L) else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -197,7 +209,7 @@ private fun LogViewer(text: String, top: androidx.compose.ui.unit.Dp, bottom: an
             GlassCard(shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
                 if (text.isBlank()) {
                     Text(
-                        stringResource(R.string.logs_empty),
+                        stringResource(Res.string.logs_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(18.dp)

@@ -82,11 +82,11 @@ fun StatusHud(state: HudState?, modifier: Modifier = Modifier) {
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier.padding(horizontal = 28.dp, vertical = 26.dp)
                     ) {
-                        Crossfade(targetState = current?.javaClass, animationSpec = tween(220), label = "hudIcon") { kind ->
+                        Crossfade(targetState = current?.let { it::class }, animationSpec = tween(220), label = "hudIcon") { kind ->
                             Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
                                 when (kind) {
-                                    HudState.Success::class.java -> Icon(Icons.Default.Check, null, tint = WayTunTheme.colors.connected, modifier = Modifier.size(44.dp))
-                                    HudState.Failure::class.java -> Icon(Icons.Default.Close, null, tint = WayTunTheme.colors.danger, modifier = Modifier.size(44.dp))
+                                    HudState.Success::class -> Icon(Icons.Default.Check, null, tint = WayTunTheme.colors.connected, modifier = Modifier.size(44.dp))
+                                    HudState.Failure::class -> Icon(Icons.Default.Close, null, tint = WayTunTheme.colors.danger, modifier = Modifier.size(44.dp))
                                     else -> CircularProgressIndicator(Modifier.size(38.dp), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary)
                                 }
                             }

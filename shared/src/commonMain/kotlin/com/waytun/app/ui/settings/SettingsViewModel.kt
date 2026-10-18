@@ -1,31 +1,23 @@
 package com.waytun.app.ui.settings
 
-import android.content.Context
-import com.waytun.app.BuildConfig
-import com.waytun.app.R
-import com.waytun.app.core.obfuscation.ObfuscationManager
-import com.waytun.app.ui.tunnels.ObfuscationReapplier
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.waytun.app.core.obfuscation.ObfuscationSettings
-import com.waytun.app.update.ApkInstaller
-import com.waytun.app.update.DownloadProgress
-import com.waytun.app.update.ApkDownloader
+import com.waytun.app.res.Res
+import com.waytun.app.res.pairing_error_generic
+import com.waytun.app.res.update_error_generic
+import com.waytun.app.res.update_error_no_apk_asset
+import com.waytun.app.ui.AppContainer
+import com.waytun.app.ui.UiText
 import com.waytun.app.update.GitHubReleaseApi
 import com.waytun.app.update.ReleaseCheckResult
 import com.waytun.app.update.ReleaseInfo
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
-import javax.inject.Inject
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 sealed interface UpdateUiState {
     data object Idle : UpdateUiState
@@ -33,16 +25,14 @@ sealed interface UpdateUiState {
     data object UpToDate : UpdateUiState
     data class Available(val version: String, val notes: String) : UpdateUiState
     data class Downloading(val percent: Int?) : UpdateUiState
-    data class ReadyToInstall(val file: File) : UpdateUiState
-    data class Error(val message: String) : UpdateUiState
+    data class ReadyToInstall(val path: String) : UpdateUiState
+    data class Error(val message: UiText) : UpdateUiState
 }
 
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-    private val obfuscationManager: ObfuscationManager,
-    private val reapplier: ObfuscationReapplier
-) : ViewModel() {
+class SettingsViewModel(private val container: AppContainer) : ViewModel() {
+
+    private val obfuscationManager = container.obfuscation
+    private val platform = container.platform
 
     val obfuscationSettings = obfuscationManager.settings
     val obfuscationProfile = obfuscationManager.profile
@@ -50,21 +40,16 @@ class SettingsViewModel @Inject constructor(
     /** A change reaches the running tunnel too: it restarts with the new values instead of waiting for a manual reconnect. */
     fun updateObfuscation(transform: (ObfuscationSettings) -> ObfuscationSettings) {
         obfuscationManager.update(transform)
-        reapplier.requestReapply()
+        container.reapplier.requestReapply()
     }
 
     fun regenerateObfuscation() {
         obfuscationManager.rotateNow()
-        reapplier.requestReapply()
+        container.reapplier.requestReapply()
     }
 
-    val appVersionName: String = runCatching {
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName
-    }.getOrNull() ?: "?"
-
-    // The app is only ever distributed as a debug build (no release signing config exists yet),
-    // so DEBUG is an accurate stand-in for "not an official signed release".
-    val isBetaBuild: Boolean = BuildConfig.DEBUG
+    val appVersionName: String = platform.appVersionName
+    val isBetaBuild: Boolean = platform.isBetaBuild
 
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
@@ -81,12 +66,12 @@ class SettingsViewModel @Inject constructor(
         if (checkJob?.isActive == true) return
         _updateState.value = UpdateUiState.Checking
         checkJob = viewModelScope.launch {
-            var result = withContext(Dispatchers.IO) { GitHubReleaseApi.fetchLatest() }
+            var result = GitHubReleaseApi.fetchLatest()
             if (result is ReleaseCheckResult.Failure) {
                 // Transient DNS/network hiccups (e.g. right after Wi-Fi reconnects) are common
                 // and resolve themselves immediately, so retry once before surfacing an error.
                 delay(1000)
-                result = withContext(Dispatchers.IO) { GitHubReleaseApi.fetchLatest() }
+                result = GitHubReleaseApi.fetchLatest()
             }
             when (result) {
                 is ReleaseCheckResult.Success -> {
@@ -100,9 +85,7 @@ class SettingsViewModel @Inject constructor(
                 }
                 ReleaseCheckResult.NoReleasesYet -> _updateState.value = UpdateUiState.UpToDate
                 is ReleaseCheckResult.Failure ->
-                    _updateState.value = UpdateUiState.Error(
-                        context.getString(R.string.update_error_generic, result.message)
-                    )
+                    _updateState.value = UpdateUiState.Error(UiText.of(Res.string.update_error_generic, result.message))
             }
         }
         checkJob?.invokeOnCompletion { checkJob = null }
@@ -111,31 +94,27 @@ class SettingsViewModel @Inject constructor(
     fun downloadAndPrepareInstall() {
         if (downloadJob?.isActive == true) return
         val release = pendingRelease ?: return
-        val url = release.apkDownloadUrl
-        val name = release.apkFileName
-        if (url == null || name == null) {
-            _updateState.value = UpdateUiState.Error(context.getString(R.string.update_error_no_apk_asset))
+        val updater = platform.updater
+        val asset = updater?.assetFor(release)
+        if (updater == null || asset == null) {
+            _updateState.value = UpdateUiState.Error(UiText.of(Res.string.update_error_no_apk_asset))
             return
         }
-        downloadJob = viewModelScope.launch(Dispatchers.IO) {
-            ApkDownloader.download(context, url, name) { progress ->
-                _updateState.value = when (progress) {
-                    is DownloadProgress.InProgress -> UpdateUiState.Downloading(progress.percent)
-                    is DownloadProgress.Done -> UpdateUiState.ReadyToInstall(progress.file)
-                    is DownloadProgress.Failed -> UpdateUiState.Error(
-                        context.getString(R.string.update_error_generic, progress.message)
-                    )
-                }
-            }
+        downloadJob = viewModelScope.launch {
+            _updateState.value = UpdateUiState.Downloading(null)
+            updater.download(asset.first, asset.second) { percent -> _updateState.value = UpdateUiState.Downloading(percent) }
+                .onSuccess { _updateState.value = UpdateUiState.ReadyToInstall(it) }
+                .onFailure { e -> _updateState.value = UpdateUiState.Error(UiText.of(Res.string.update_error_generic, e.message ?: "")) }
         }
         downloadJob?.invokeOnCompletion { downloadJob = null }
     }
 
-    fun installUpdate(file: File) {
-        viewModelScope.launch(Dispatchers.IO) {
-            ApkInstaller.install(context, file).onFailure { e ->
+    fun installUpdate(path: String) {
+        val updater = platform.updater ?: return
+        viewModelScope.launch {
+            updater.install(path).onFailure { e ->
                 _updateState.value = UpdateUiState.Error(
-                    context.getString(R.string.update_error_generic, e.message ?: context.getString(R.string.pairing_error_generic))
+                    UiText.of(Res.string.update_error_generic, e.message ?: UiText.of(Res.string.pairing_error_generic))
                 )
             }
         }

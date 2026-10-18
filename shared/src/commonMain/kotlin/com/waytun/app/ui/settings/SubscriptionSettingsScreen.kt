@@ -1,5 +1,27 @@
 package com.waytun.app.ui.settings
 
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_back
+import com.waytun.app.res.detail_label_name
+import com.waytun.app.res.sub_auto
+import com.waytun.app.res.sub_auto_hint
+import com.waytun.app.res.sub_auto_hint_hours
+import com.waytun.app.res.sub_client_id
+import com.waytun.app.res.sub_device_info
+import com.waytun.app.res.sub_device_info_hint
+import com.waytun.app.res.sub_on_launch
+import com.waytun.app.res.sub_on_launch_hint
+import com.waytun.app.res.sub_order_alpha
+import com.waytun.app.res.sub_order_panel
+import com.waytun.app.res.sub_order_ping
+import com.waytun.app.res.sub_ping_launch
+import com.waytun.app.res.sub_seconds
+import com.waytun.app.res.sub_section_network
+import com.waytun.app.res.sub_section_order
+import com.waytun.app.res.sub_section_privacy
+import com.waytun.app.res.sub_section_sync
+import com.waytun.app.res.sub_settings_title
+import com.waytun.app.res.sub_wait
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
@@ -38,13 +60,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.waytun.app.ui.LocalAppContainer
+import com.waytun.app.ui.platform.PlatformBackHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.waytun.app.R
-import com.waytun.app.core.device.DeviceIdentity
 import com.waytun.app.ui.components.GlassButton
 import com.waytun.app.ui.components.GlassChip
 import com.waytun.app.ui.components.GlassScaffold
@@ -59,21 +80,24 @@ private val WaitChoices = listOf(5, 10, 15)
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SubscriptionSettingsScreen(
+    subscriptionId: String,
     onBack: () -> Unit,
-    viewModel: SubscriptionSettingsViewModel = hiltViewModel()
+    container: com.waytun.app.ui.AppContainer = LocalAppContainer.current,
+    viewModel: SubscriptionSettingsViewModel = viewModel(key = subscriptionId) {
+        SubscriptionSettingsViewModel(subscriptionId, container.subscriptionRepository)
+    }
 ) {
     // A back gesture closes the screen exactly like the arrow does (same slide), not with the system's shrinking preview.
-    androidx.activity.compose.BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val defaultAgent = remember { DeviceIdentity.userAgent(context) }
+    val defaultAgent = container.platform.defaultUserAgent
     val scroll = rememberScrollState()
 
     GlassScaffold(
-        title = { Text(stringResource(R.string.sub_settings_title), maxLines = 1) },
+        title = { Text(stringResource(Res.string.sub_settings_title), maxLines = 1) },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
             }
         }
     ) { padding ->
@@ -112,49 +136,49 @@ fun SubscriptionSettingsScreen(
                 GlassTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = stringResource(R.string.detail_label_name),
+                    label = stringResource(Res.string.detail_label_name),
                     singleLine = true
                 )
 
-                SettingsCard(stringResource(R.string.sub_section_sync), Indigo) {
+                SettingsCard(stringResource(Res.string.sub_section_sync), Indigo) {
                     val intervalHours = current.panelIntervalHours ?: 1
                     val autoHint = if (intervalHours == 1) {
-                        stringResource(R.string.sub_auto_hint)
+                        stringResource(Res.string.sub_auto_hint)
                     } else {
-                        stringResource(R.string.sub_auto_hint_hours, intervalHours)
+                        stringResource(Res.string.sub_auto_hint_hours, intervalHours)
                     }
-                    SwitchRow(stringResource(R.string.sub_auto), autoHint, settings.autoUpdate, Indigo) { v ->
+                    SwitchRow(stringResource(Res.string.sub_auto), autoHint, settings.autoUpdate, Indigo) { v ->
                         viewModel.update { it.copy(autoUpdate = v) }
                     }
-                    SwitchRow(stringResource(R.string.sub_on_launch), stringResource(R.string.sub_on_launch_hint), settings.updateOnOpen, Indigo) { v ->
+                    SwitchRow(stringResource(Res.string.sub_on_launch), stringResource(Res.string.sub_on_launch_hint), settings.updateOnOpen, Indigo) { v ->
                         viewModel.update { it.copy(updateOnOpen = v) }
                     }
-                    SwitchRow(stringResource(R.string.sub_ping_launch), null, settings.pingOnOpen, Indigo) { v ->
+                    SwitchRow(stringResource(Res.string.sub_ping_launch), null, settings.pingOnOpen, Indigo) { v ->
                         viewModel.update { it.copy(pingOnOpen = v) }
                     }
                 }
 
-                SettingsCard(stringResource(R.string.sub_section_privacy), Indigo) {
-                    SwitchRow(stringResource(R.string.sub_device_info), stringResource(R.string.sub_device_info_hint), settings.sendHwid, Indigo) { v ->
+                SettingsCard(stringResource(Res.string.sub_section_privacy), Indigo) {
+                    SwitchRow(stringResource(Res.string.sub_device_info), stringResource(Res.string.sub_device_info_hint), settings.sendHwid, Indigo) { v ->
                         viewModel.update { it.copy(sendHwid = v) }
                     }
                 }
 
-                SettingsCard(stringResource(R.string.sub_section_network), Indigo) {
+                SettingsCard(stringResource(Res.string.sub_section_network), Indigo) {
                     Text(
-                        stringResource(R.string.sub_wait),
+                        stringResource(Res.string.sub_wait),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                     )
                     GlassSegmented(
-                        labels = WaitChoices.map { stringResource(R.string.sub_seconds, it) },
+                        labels = WaitChoices.map { stringResource(Res.string.sub_seconds, it) },
                         selected = WaitChoices.indices.minBy { kotlin.math.abs(WaitChoices[it] - settings.timeoutSeconds) },
                         onSelect = { index -> viewModel.update { it.copy(timeoutSeconds = WaitChoices[index]) } }
                     )
                 }
 
-                SettingsCard(stringResource(R.string.sub_client_id), Indigo) {
+                SettingsCard(stringResource(Res.string.sub_client_id), Indigo) {
                     GlassTextField(
                         value = agent,
                         onValueChange = { agent = it },
@@ -164,12 +188,12 @@ fun SubscriptionSettingsScreen(
                     )
                 }
 
-                SettingsCard(stringResource(R.string.sub_section_order), Indigo) {
+                SettingsCard(stringResource(Res.string.sub_section_order), Indigo) {
                     GlassSegmented(
                         labels = listOf(
-                            stringResource(R.string.sub_order_panel),
-                            stringResource(R.string.sub_order_ping),
-                            stringResource(R.string.sub_order_alpha)
+                            stringResource(Res.string.sub_order_panel),
+                            stringResource(Res.string.sub_order_ping),
+                            stringResource(Res.string.sub_order_alpha)
                         ),
                         selected = settings.sortMode.coerceIn(0, 2),
                         onSelect = { mode -> viewModel.update { it.copy(sortMode = mode) } }

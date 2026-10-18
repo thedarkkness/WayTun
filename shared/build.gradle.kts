@@ -19,7 +19,7 @@ kotlin {
     jvm("desktop")
     // Compile-only purity check: with a non-JVM target in the build, commonMain can no longer see the JDK, so
     // anything that wouldn't build for iOS later fails now. `./gradlew :shared:compileCommonMainKotlinMetadata -Pwaytun.purityCheck`
-    if (providers.gradleProperty("waytun.purityCheck").isPresent) linuxX64()
+    if (providers.gradleProperty("waytun.purityCheck").isPresent) iosSimulatorArm64()
 
     jvmToolchain(21)
 
@@ -46,6 +46,8 @@ kotlin {
             api(compose.components.resources)
             api(libs.cmp.material.icons.core)
             api(libs.haze)
+            api(libs.jb.lifecycle.viewmodel.compose)
+            api(libs.jb.lifecycle.runtime.compose)
             api(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             api(libs.ktor.client.core)
@@ -53,6 +55,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.androidx.activity.compose)
         }
         getByName("desktopMain").dependencies {
             implementation(libs.ktor.client.java)

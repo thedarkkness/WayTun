@@ -1,8 +1,74 @@
 package com.waytun.app.ui.settings
 
-import android.app.Activity
-import android.os.Build
-import android.text.format.DateUtils
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_back
+import com.waytun.app.res.action_cancel
+import com.waytun.app.res.app_name
+import com.waytun.app.res.interface_glass
+import com.waytun.app.res.interface_hint
+import com.waytun.app.res.interface_plain
+import com.waytun.app.res.net_block_quic
+import com.waytun.app.res.net_block_quic_desc
+import com.waytun.app.res.obf_apply_live
+import com.waytun.app.res.obf_apply_live_desc
+import com.waytun.app.res.obf_auto_reconnect
+import com.waytun.app.res.obf_auto_reconnect_desc
+import com.waytun.app.res.obf_auto_rotate
+import com.waytun.app.res.obf_auto_rotate_desc
+import com.waytun.app.res.obf_current
+import com.waytun.app.res.obf_enable
+import com.waytun.app.res.obf_fingerprint
+import com.waytun.app.res.obf_fingerprint_desc
+import com.waytun.app.res.obf_generated
+import com.waytun.app.res.obf_headers
+import com.waytun.app.res.obf_headers_desc
+import com.waytun.app.res.obf_intro
+import com.waytun.app.res.obf_level
+import com.waytun.app.res.obf_level_light
+import com.waytun.app.res.obf_level_light_desc
+import com.waytun.app.res.obf_level_medium
+import com.waytun.app.res.obf_level_medium_desc
+import com.waytun.app.res.obf_level_strong
+import com.waytun.app.res.obf_level_strong_desc
+import com.waytun.app.res.obf_methods
+import com.waytun.app.res.obf_regenerate
+import com.waytun.app.res.obf_schedule
+import com.waytun.app.res.obf_value_fingerprint
+import com.waytun.app.res.obf_value_junk
+import com.waytun.app.res.obf_value_off
+import com.waytun.app.res.obf_value_on
+import com.waytun.app.res.obf_wg_junk
+import com.waytun.app.res.obf_wg_junk_desc
+import com.waytun.app.res.settings_app_version
+import com.waytun.app.res.settings_build_beta
+import com.waytun.app.res.settings_build_release
+import com.waytun.app.res.settings_check_updates
+import com.waytun.app.res.settings_developer
+import com.waytun.app.res.settings_developer_value
+import com.waytun.app.res.settings_hwid
+import com.waytun.app.res.settings_language_auto
+import com.waytun.app.res.settings_language_en
+import com.waytun.app.res.settings_language_ru
+import com.waytun.app.res.settings_logs_open
+import com.waytun.app.res.settings_os_label
+import com.waytun.app.res.settings_section_about
+import com.waytun.app.res.settings_section_diagnostics
+import com.waytun.app.res.settings_section_interface
+import com.waytun.app.res.settings_section_language
+import com.waytun.app.res.settings_section_network
+import com.waytun.app.res.settings_section_obfuscation
+import com.waytun.app.res.settings_section_theme
+import com.waytun.app.res.settings_section_updates
+import com.waytun.app.res.settings_title
+import com.waytun.app.res.theme_dark
+import com.waytun.app.res.theme_light
+import com.waytun.app.res.update_available_title
+import com.waytun.app.res.update_checking
+import com.waytun.app.res.update_download_install
+import com.waytun.app.res.update_downloading
+import com.waytun.app.res.update_downloading_indeterminate
+import com.waytun.app.res.update_ready_install
+import com.waytun.app.res.update_up_to_date
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -77,15 +143,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.waytun.app.core.time.nowMillis
+import com.waytun.app.ui.LocalAppContainer
+import com.waytun.app.ui.asString
+import com.waytun.app.ui.platform.PlatformBackHandler
+import com.waytun.app.ui.platform.operatingSystemName
+import com.waytun.app.ui.platform.relativeTimeSpan
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.waytun.app.R
-import com.waytun.app.core.device.DeviceIdentity
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.PaddingValues
@@ -93,7 +162,6 @@ import com.waytun.app.ui.theme.InterfaceStyle
 import com.waytun.app.ui.theme.InterfaceStyleStore
 import com.waytun.app.ui.theme.AppThemeMode
 import com.waytun.app.ui.theme.AppThemeStore
-import com.waytun.app.core.language.AppLanguage
 import com.waytun.app.core.obfuscation.ObfuscationLevel
 import com.waytun.app.core.obfuscation.ObfuscationProfile
 import com.waytun.app.core.obfuscation.ObfuscationSettings
@@ -183,16 +251,17 @@ private fun InfoRow(title: String, value: String, onClick: (() -> Unit)? = null)
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenLogs: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel()
+    container: com.waytun.app.ui.AppContainer = LocalAppContainer.current,
+    viewModel: SettingsViewModel = viewModel { SettingsViewModel(container) }
 ) {
     // A back gesture closes the screen exactly like the arrow does (same slide), not with the system's shrinking preview.
-    androidx.activity.compose.BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val obfuscation by viewModel.obfuscationSettings.collectAsStateWithLifecycle()
     val profile by viewModel.obfuscationProfile.collectAsStateWithLifecycle()
-    val activity = LocalContext.current as Activity
+    val platform = container.platform
     var installRequested by remember(updateState) { mutableStateOf(false) }
-    var selectedLanguage by remember { mutableStateOf(AppLanguage.current(activity)) }
+    var selectedLanguage by remember { mutableStateOf(platform.currentLanguage()) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -201,10 +270,10 @@ fun SettingsScreen(
     val showScrollTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 500 } }
 
     GlassScaffold(
-        title = { Text(stringResource(R.string.settings_title)) },
+        title = { Text(stringResource(Res.string.settings_title)) },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
             }
         },
         floatingActionButton = {
@@ -229,9 +298,9 @@ fun SettingsScreen(
         ) {
             item(key = "theme") {
                 val themeMode by AppThemeStore.mode.collectAsStateWithLifecycle()
-                SettingsCard(stringResource(R.string.settings_section_theme), Sky) {
+                SettingsCard(stringResource(Res.string.settings_section_theme), Sky) {
                     GlassSegmented(
-                        labels = listOf(stringResource(R.string.theme_light), stringResource(R.string.theme_dark)),
+                        labels = listOf(stringResource(Res.string.theme_light), stringResource(Res.string.theme_dark)),
                         selected = if (themeMode == AppThemeMode.DARK) 1 else 0,
                         onSelect = { index -> AppThemeStore.set(if (index == 1) AppThemeMode.DARK else AppThemeMode.LIGHT) }
                     )
@@ -240,14 +309,14 @@ fun SettingsScreen(
 
             item(key = "interface") {
                 val interfaceStyle by InterfaceStyleStore.style.collectAsStateWithLifecycle()
-                SettingsCard(stringResource(R.string.settings_section_interface), Sky) {
+                SettingsCard(stringResource(Res.string.settings_section_interface), Sky) {
                     GlassSegmented(
-                        labels = listOf(stringResource(R.string.interface_plain), stringResource(R.string.interface_glass)),
+                        labels = listOf(stringResource(Res.string.interface_plain), stringResource(Res.string.interface_glass)),
                         selected = if (interfaceStyle == InterfaceStyle.GLASS) 1 else 0,
                         onSelect = { index -> InterfaceStyleStore.set(if (index == 1) InterfaceStyle.GLASS else InterfaceStyle.PLAIN) }
                     )
                     Text(
-                        stringResource(R.string.interface_hint),
+                        stringResource(Res.string.interface_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -265,10 +334,10 @@ fun SettingsScreen(
             }
 
             item(key = "network") {
-            SettingsCard(stringResource(R.string.settings_section_network), Amber) {
+            SettingsCard(stringResource(Res.string.settings_section_network), Amber) {
                 SwitchRow(
-                    stringResource(R.string.net_block_quic),
-                    stringResource(R.string.net_block_quic_desc),
+                    stringResource(Res.string.net_block_quic),
+                    stringResource(Res.string.net_block_quic_desc),
                     obfuscation.blockQuic,
                     Amber
                 ) { v -> viewModel.updateObfuscation { it.copy(blockQuic = v) } }
@@ -276,37 +345,37 @@ fun SettingsScreen(
             }
 
             item(key = "language") {
-            SettingsCard(stringResource(R.string.settings_section_language), Sky) {
-                val tags = listOf(AppLanguage.AUTO, "en", "ru")
+            SettingsCard(stringResource(Res.string.settings_section_language), Sky) {
+                val tags = listOf("auto", "en", "ru")
                 GlassSegmented(
                     labels = listOf(
-                        stringResource(R.string.settings_language_auto),
-                        stringResource(R.string.settings_language_en),
-                        stringResource(R.string.settings_language_ru)
+                        stringResource(Res.string.settings_language_auto),
+                        stringResource(Res.string.settings_language_en),
+                        stringResource(Res.string.settings_language_ru)
                     ),
                     selected = tags.indexOf(selectedLanguage).coerceAtLeast(0),
                     onSelect = { index ->
                         selectedLanguage = tags[index]
-                        AppLanguage.set(activity, tags[index])
+                        platform.setLanguage(tags[index])
                     }
                 )
             }
             }
 
             item(key = "about") {
-            SettingsCard(stringResource(R.string.settings_section_about), Rose) {
+            SettingsCard(stringResource(Res.string.settings_section_about), Rose) {
                 InfoRow(
-                    stringResource(R.string.app_name),
-                    stringResource(R.string.settings_app_version, viewModel.appVersionName) + " · " +
-                        stringResource(if (viewModel.isBetaBuild) R.string.settings_build_beta else R.string.settings_build_release)
+                    stringResource(Res.string.app_name),
+                    stringResource(Res.string.settings_app_version, viewModel.appVersionName) + " · " +
+                        stringResource(if (viewModel.isBetaBuild) Res.string.settings_build_beta else Res.string.settings_build_release)
                 )
-                InfoRow(stringResource(R.string.settings_os_label), "Android ${Build.VERSION.RELEASE}")
-                val hwid = remember { DeviceIdentity.hwid(activity) }
-                InfoRow(stringResource(R.string.settings_hwid), hwid)
-                InfoRow(stringResource(R.string.settings_developer), stringResource(R.string.settings_developer_value))
+                InfoRow(stringResource(Res.string.settings_os_label), operatingSystemName)
+                val hwid = platform.deviceId
+                InfoRow(stringResource(Res.string.settings_hwid), hwid)
+                InfoRow(stringResource(Res.string.settings_developer), stringResource(Res.string.settings_developer_value))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 Text(
-                    stringResource(R.string.settings_section_updates),
+                    stringResource(Res.string.settings_section_updates),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 6.dp)
@@ -315,7 +384,7 @@ fun SettingsScreen(
             }
             }
             item(key = "diagnostics") {
-            SettingsCard(stringResource(R.string.settings_section_diagnostics), Sky) {
+            SettingsCard(stringResource(Res.string.settings_section_diagnostics), Sky) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -324,7 +393,7 @@ fun SettingsScreen(
                         .clickable(onClick = onOpenLogs)
                         .padding(vertical = 10.dp)
                 ) {
-                    Text(stringResource(R.string.settings_logs_open), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(stringResource(Res.string.settings_logs_open), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
@@ -347,14 +416,14 @@ private fun ObfuscationSection(
     onRegenerate: () -> Unit
 ) {
     val on = settings.enabled
-    SettingsCard(stringResource(R.string.settings_section_obfuscation), Indigo) {
+    SettingsCard(stringResource(Res.string.settings_section_obfuscation), Indigo) {
         Text(
-            stringResource(R.string.obf_intro),
+            stringResource(Res.string.obf_intro),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 6.dp)
         )
-        SwitchRow(stringResource(R.string.obf_enable), null, on, Indigo) { v -> onUpdate { it.copy(enabled = v) } }
+        SwitchRow(stringResource(Res.string.obf_enable), null, on, Indigo) { v -> onUpdate { it.copy(enabled = v) } }
 
         AnimatedVisibility(
             visible = on,
@@ -363,15 +432,15 @@ private fun ObfuscationSection(
         ) {
           Column {
             Text(
-                stringResource(R.string.obf_level),
+                stringResource(Res.string.obf_level),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp, bottom = 6.dp)
             )
             val levels = listOf(
-                ObfuscationLevel.LIGHT to R.string.obf_level_light,
-                ObfuscationLevel.MEDIUM to R.string.obf_level_medium,
-                ObfuscationLevel.STRONG to R.string.obf_level_strong
+                ObfuscationLevel.LIGHT to Res.string.obf_level_light,
+                ObfuscationLevel.MEDIUM to Res.string.obf_level_medium,
+                ObfuscationLevel.STRONG to Res.string.obf_level_strong
             )
             GlassSegmented(
                 labels = levels.map { stringResource(it.second) },
@@ -381,9 +450,9 @@ private fun ObfuscationSection(
             Text(
                 stringResource(
                     when (settings.level) {
-                        ObfuscationLevel.LIGHT -> R.string.obf_level_light_desc
-                        ObfuscationLevel.MEDIUM -> R.string.obf_level_medium_desc
-                        ObfuscationLevel.STRONG -> R.string.obf_level_strong_desc
+                        ObfuscationLevel.LIGHT -> Res.string.obf_level_light_desc
+                        ObfuscationLevel.MEDIUM -> Res.string.obf_level_medium_desc
+                        ObfuscationLevel.STRONG -> Res.string.obf_level_strong_desc
                     }
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -391,25 +460,23 @@ private fun ObfuscationSection(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            SectionLabel(stringResource(R.string.obf_methods))
-            SwitchRow(stringResource(R.string.obf_fingerprint), stringResource(R.string.obf_fingerprint_desc), settings.fingerprintRotation, Rose) { v -> onUpdate { it.copy(fingerprintRotation = v) } }
-            SwitchRow(stringResource(R.string.obf_headers), stringResource(R.string.obf_headers_desc), settings.headerRotation, Sky) { v -> onUpdate { it.copy(headerRotation = v) } }
-            SwitchRow(stringResource(R.string.obf_wg_junk), stringResource(R.string.obf_wg_junk_desc), settings.wireguardJunk, Lime) { v -> onUpdate { it.copy(wireguardJunk = v) } }
+            SectionLabel(stringResource(Res.string.obf_methods))
+            SwitchRow(stringResource(Res.string.obf_fingerprint), stringResource(Res.string.obf_fingerprint_desc), settings.fingerprintRotation, Rose) { v -> onUpdate { it.copy(fingerprintRotation = v) } }
+            SwitchRow(stringResource(Res.string.obf_headers), stringResource(Res.string.obf_headers_desc), settings.headerRotation, Sky) { v -> onUpdate { it.copy(headerRotation = v) } }
+            SwitchRow(stringResource(Res.string.obf_wg_junk), stringResource(Res.string.obf_wg_junk_desc), settings.wireguardJunk, Lime) { v -> onUpdate { it.copy(wireguardJunk = v) } }
 
-            SectionLabel(stringResource(R.string.obf_schedule))
-            SwitchRow(stringResource(R.string.obf_auto_rotate), stringResource(R.string.obf_auto_rotate_desc), settings.autoRotate, Mint) { v -> onUpdate { it.copy(autoRotate = v) } }
-            SwitchRow(stringResource(R.string.obf_auto_reconnect), stringResource(R.string.obf_auto_reconnect_desc), settings.autoReconnect, Mint) { v -> onUpdate { it.copy(autoReconnect = v) } }
+            SectionLabel(stringResource(Res.string.obf_schedule))
+            SwitchRow(stringResource(Res.string.obf_auto_rotate), stringResource(Res.string.obf_auto_rotate_desc), settings.autoRotate, Mint) { v -> onUpdate { it.copy(autoRotate = v) } }
+            SwitchRow(stringResource(Res.string.obf_auto_reconnect), stringResource(Res.string.obf_auto_reconnect_desc), settings.autoReconnect, Mint) { v -> onUpdate { it.copy(autoReconnect = v) } }
             SwitchRow(
-                stringResource(R.string.obf_apply_live), stringResource(R.string.obf_apply_live_desc),
+                stringResource(Res.string.obf_apply_live), stringResource(Res.string.obf_apply_live_desc),
                 settings.applyRotationLive, Amber, enabled = settings.autoRotate
             ) { v -> onUpdate { it.copy(applyRotationLive = v) } }
 
-            SectionLabel(stringResource(R.string.obf_current))
-            val generated = DateUtils.getRelativeTimeSpanString(
-                profile.generatedAtMillis, System.currentTimeMillis(), DateUtils.SECOND_IN_MILLIS
-            ).toString()
+            SectionLabel(stringResource(Res.string.obf_current))
+            val generated = relativeTimeSpan(profile.generatedAtMillis, nowMillis(), 1_000L)
             Text(
-                stringResource(R.string.obf_generated, generated),
+                stringResource(Res.string.obf_generated, generated),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -418,20 +485,20 @@ private fun ObfuscationSection(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                val onText = stringResource(R.string.obf_value_on)
-                val offText = stringResource(R.string.obf_value_off)
-                ValueChip(stringResource(R.string.obf_value_fingerprint, profile.fingerprint ?: offText), Rose)
+                val onText = stringResource(Res.string.obf_value_on)
+                val offText = stringResource(Res.string.obf_value_off)
+                ValueChip(stringResource(Res.string.obf_value_fingerprint, profile.fingerprint ?: offText), Rose)
                 val junkCount = profile.awgJunkCount
                 val junkMin = profile.awgJunkMin
                 val junkMax = profile.awgJunkMax
                 if (junkCount != null && junkMin != null && junkMax != null) {
-                    ValueChip(stringResource(R.string.obf_value_junk, junkCount, junkMin, junkMax), Lime)
+                    ValueChip(stringResource(Res.string.obf_value_junk, junkCount, junkMin, junkMax), Lime)
                 }
                 profile.userAgent?.let { ValueChip("UA: " + it.substringAfter("(").substringBefore(")").take(26), Sky) }
                 if (profile.awgDecoyPacket != null) ValueChip("I1 $onText", Indigo)
             }
             GlassButton(onClick = onRegenerate, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Text(stringResource(R.string.obf_regenerate))
+                Text(stringResource(Res.string.obf_regenerate))
             }
           }
         }
@@ -478,37 +545,37 @@ private fun UpdateSection(
     when (state) {
         is UpdateUiState.Idle, is UpdateUiState.Error, is UpdateUiState.UpToDate -> {
             Column {
-                if (state is UpdateUiState.UpToDate) Text(stringResource(R.string.update_up_to_date), color = MaterialTheme.colorScheme.tertiary)
-                if (state is UpdateUiState.Error) Text(state.message, color = MaterialTheme.colorScheme.error)
+                if (state is UpdateUiState.UpToDate) Text(stringResource(Res.string.update_up_to_date), color = MaterialTheme.colorScheme.tertiary)
+                if (state is UpdateUiState.Error) Text(state.message.asString(), color = MaterialTheme.colorScheme.error)
                 GlassButton(onClick = { viewModel.checkForUpdates() }, primary = true, modifier = Modifier.padding(top = 8.dp)) {
-                    Text(stringResource(R.string.settings_check_updates))
+                    Text(stringResource(Res.string.settings_check_updates))
                 }
             }
         }
 
         UpdateUiState.Checking -> Column {
             CircularProgressIndicator()
-            Text(stringResource(R.string.update_checking), modifier = Modifier.padding(top = 8.dp))
+            Text(stringResource(Res.string.update_checking), modifier = Modifier.padding(top = 8.dp))
         }
 
         is UpdateUiState.Available -> Column {
-            Text(stringResource(R.string.update_available_title, state.version), fontWeight = FontWeight.SemiBold)
+            Text(stringResource(Res.string.update_available_title, state.version), fontWeight = FontWeight.SemiBold)
             if (state.notes.isNotBlank()) Text(state.notes, modifier = Modifier.padding(top = 8.dp))
             GlassButton(onClick = { viewModel.downloadAndPrepareInstall() }, primary = true, modifier = Modifier.padding(top = 12.dp)) {
-                Text(stringResource(R.string.update_download_install))
+                Text(stringResource(Res.string.update_download_install))
             }
             GlassButton(onClick = { viewModel.dismissUpdateDialog() }, modifier = Modifier.padding(top = 8.dp)) {
-                Text(stringResource(R.string.action_cancel))
+                Text(stringResource(Res.string.action_cancel))
             }
         }
 
         is UpdateUiState.Downloading -> Column(modifier = Modifier.fillMaxWidth()) {
             if (state.percent != null) {
                 LinearProgressIndicator(progress = { state.percent / 100f }, modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.update_downloading, state.percent), modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(Res.string.update_downloading, state.percent), modifier = Modifier.padding(top = 8.dp))
             } else {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.update_downloading_indeterminate), modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(Res.string.update_downloading_indeterminate), modifier = Modifier.padding(top = 8.dp))
             }
         }
 
@@ -517,8 +584,8 @@ private fun UpdateSection(
             enabled = !installRequested,
             onClick = {
                 onInstallRequested()
-                viewModel.installUpdate(state.file)
+                viewModel.installUpdate(state.path)
             }
-        ) { Text(stringResource(R.string.update_ready_install)) }
+        ) { Text(stringResource(Res.string.update_ready_install)) }
     }
 }

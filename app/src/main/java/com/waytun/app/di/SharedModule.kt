@@ -16,6 +16,8 @@ import com.waytun.app.data.ping.AndroidUnderlyingNetwork
 import com.waytun.app.data.ping.PingManager
 import com.waytun.app.data.ping.SocketTcpProbe
 import com.waytun.app.data.tunnel.TunnelRepository
+import com.waytun.app.ui.AndroidPlatformServices
+import com.waytun.app.ui.AppContainer
 import com.waytun.app.ui.tunnels.AndroidVpnLauncher
 import com.waytun.app.vpn.AmneziaBackend
 import com.waytun.app.vpn.Engine
@@ -75,4 +77,17 @@ object SharedModule {
     @Singleton
     fun provideObfuscationManager(@ApplicationContext context: Context): ObfuscationManager =
         ObfuscationManager(SharedPreferencesStore(context, "obfuscation"))
+
+    /** What the shared (Compose Multiplatform) screens get instead of Hilt: the same singletons. */
+    @Provides
+    @Singleton
+    fun provideAppContainer(
+        tunnels: TunnelRepository,
+        subscriptions: SubscriptionRepository,
+        backends: VpnBackends,
+        obfuscation: ObfuscationManager,
+        pings: PingManager,
+        uiPrefs: UiPrefs,
+        platform: AndroidPlatformServices
+    ): AppContainer = AppContainer(tunnels, subscriptions, backends, obfuscation, pings, uiPrefs, platform)
 }

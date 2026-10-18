@@ -9,10 +9,6 @@ import com.wireguard.config.Config as WgConfig
 import org.amnezia.awg.config.BadConfigException as AwgBadConfigException
 import org.amnezia.awg.config.Config as AwgConfig
 
-enum class ConfigErrorKind { MISSING, INVALID, STRUCTURE }
-
-/** [fieldName] is the exact wg-quick/awg-quick attribute name (e.g. "PrivateKey", "JunkPacketCount"); blank for file-level errors. */
-data class ConfigFieldError(val fieldName: String, val kind: ConfigErrorKind)
 
 /** Result of validating and parsing a raw .conf text supplied by the user. */
 sealed interface TunnelParseResult {
@@ -50,8 +46,12 @@ object TunnelConfigParser {
                 TunnelParseResult.SyntaxError("Malformed share link")
             }
         }
-        return if (containsAmneziaWgMarkers(rawText)) parseAmnezia(rawText) else parseWireGuard(rawText)
+        return parseConf(rawText)
     }
+
+    /** wg-quick / awg-quick text only (no share links). */
+    fun parseConf(rawText: String): TunnelParseResult =
+        if (containsAmneziaWgMarkers(rawText)) parseAmnezia(rawText) else parseWireGuard(rawText)
 
     private fun parseWireGuard(rawText: String): TunnelParseResult = try {
         TunnelParseResult.WireGuardSuccess(WgConfig.parse(BufferedReader(StringReader(rawText))))

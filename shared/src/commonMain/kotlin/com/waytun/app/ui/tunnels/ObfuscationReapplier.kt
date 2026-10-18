@@ -1,14 +1,10 @@
 package com.waytun.app.ui.tunnels
 
-import android.content.Context
 import com.waytun.app.core.log.AppLog
 import com.waytun.app.core.obfuscation.ObfuscationManager
 import com.waytun.app.data.tunnel.TunnelRepository
 import com.waytun.app.vpn.TunnelState
 import com.waytun.app.vpn.VpnBackends
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,14 +21,12 @@ private const val SAME_ENGINE_RESTART_GAP_MS = 400L
  * change this brings the running tunnel back up with a freshly generated profile built from the new settings.
  * Changes made in quick succession (several switches in a row) cause a single restart.
  */
-@Singleton
-class ObfuscationReapplier @Inject constructor(
-    @param:ApplicationContext private val context: Context,
+class ObfuscationReapplier(
     private val backends: VpnBackends,
     private val tunnelRepository: TunnelRepository,
     private val obfuscation: ObfuscationManager
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var job: Job? = null
 
     fun requestReapply() {
@@ -46,12 +40,12 @@ class ObfuscationReapplier @Inject constructor(
             // Every running engine goes fully down first, exactly like a normal switch, so two Go runtimes never overlap.
             val running = backends.all.filter { (_, backend) -> backend.state.value !is TunnelState.Disconnected }.map { it.first }
             AppLog.log(AppLog.CONNECTION, "obfuscation settings changed: reconnecting '${details.name}' with new values")
-            running.forEach { sendDisconnect(context, it) }
+            running.forEach { backends.stop(it) }
             if (running.isNotEmpty()) {
                 backends.awaitStopped(running)
                 delay(SAME_ENGINE_RESTART_GAP_MS)
             }
-            startConnect(context, engine, tunnelId, details.name, settings, obfuscation.profileForConnect())
+            backends.start(engine, tunnelId, details.name, settings, obfuscation.profileForConnect())
         }
     }
 }

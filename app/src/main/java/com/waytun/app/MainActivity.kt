@@ -32,6 +32,11 @@ import com.waytun.app.ui.theme.WayTunTheme
 import com.waytun.app.ui.tunnels.TunnelDetailScreen
 import com.waytun.app.ui.tunnels.TunnelListScreen
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import androidx.compose.runtime.CompositionLocalProvider
+import com.waytun.app.ui.AndroidPlatformServices
+import com.waytun.app.ui.AppContainer
+import com.waytun.app.ui.LocalAppContainer
 
 private const val ROUTE_LIST = "list"
 private const val ROUTE_DETAIL = "detail/{tunnelId}"
@@ -49,6 +54,9 @@ private val slideSpec = tween<IntOffset>(SLIDE_MS, easing = FastOutSlowInEasing)
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var container: AppContainer
+    @Inject lateinit var platformServices: AndroidPlatformServices
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLanguage.wrap(newBase))
     }
@@ -57,7 +65,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestSystemRefreshRate()
+        platformServices.attach(this)
         setContent {
+            CompositionLocalProvider(LocalAppContainer provides container) {
             WayTunTheme {
                 val navController = rememberNavController()
                 // The strings re-resolve in place on a language change; a short dip-and-return of opacity makes the swap soft.
@@ -96,8 +106,11 @@ class MainActivity : ComponentActivity() {
                     composable(ROUTE_DETAIL) {
                         TunnelDetailScreen(onBack = { navController.popBackStack() })
                     }
-                    composable(ROUTE_SUBSCRIPTION) {
-                        SubscriptionSettingsScreen(onBack = { navController.popBackStack() })
+                    composable(ROUTE_SUBSCRIPTION) { entry ->
+                        SubscriptionSettingsScreen(
+                            subscriptionId = entry.arguments?.getString("subscriptionId").orEmpty(),
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable(ROUTE_SETTINGS) {
                         SettingsScreen(
@@ -111,7 +124,13 @@ class MainActivity : ComponentActivity() {
                 }
                 }
             }
+            }
         }
+    }
+
+    override fun onDestroy() {
+        platformServices.detach(this)
+        super.onDestroy()
     }
 
     /**

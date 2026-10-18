@@ -1,25 +1,19 @@
 package com.waytun.app.ui.settings
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.waytun.app.data.subscription.SubscriptionRepository
 import com.waytun.app.data.subscription.SubscriptionSettings
 import com.waytun.app.data.subscription.SubscriptionSettingsState
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-@HiltViewModel
-class SubscriptionSettingsViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+class SubscriptionSettingsViewModel(
+    private val id: String,
     private val repository: SubscriptionRepository
 ) : ViewModel() {
-
-    private val id: String = checkNotNull(savedStateHandle["subscriptionId"])
 
     val state: StateFlow<SubscriptionSettingsState?> = repository.observeSettings(id)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
