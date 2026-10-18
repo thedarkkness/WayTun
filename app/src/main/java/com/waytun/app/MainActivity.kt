@@ -103,8 +103,11 @@ class MainActivity : ComponentActivity() {
                             onSubscriptionSettings = { id -> navController.navigate("subscription/$id") }
                         )
                     }
-                    composable(ROUTE_DETAIL) {
-                        TunnelDetailScreen(onBack = { navController.popBackStack() })
+                    composable(ROUTE_DETAIL) { entry ->
+                        TunnelDetailScreen(
+                            tunnelId = entry.arguments?.getString("tunnelId").orEmpty(),
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable(ROUTE_SUBSCRIPTION) { entry ->
                         SubscriptionSettingsScreen(

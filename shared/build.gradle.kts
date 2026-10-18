@@ -53,6 +53,9 @@ kotlin {
             api(libs.ktor.client.core)
             api(libs.androidx.room.runtime)
         }
+        getByName("jvmCommonMain").dependencies {
+            implementation(libs.zxing.core)
+        }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.activity.compose)

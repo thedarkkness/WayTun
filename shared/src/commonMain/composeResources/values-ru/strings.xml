@@ -294,4 +294,5 @@
     <string name="settings_section_theme">Тема</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
+    <string name="import_error_conf_unsupported">Конфиги WireGuard и AmneziaWG на этой платформе пока не поддерживаются</string>
 </resources>

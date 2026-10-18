@@ -18,6 +18,13 @@ object AppIcons {
         )
     }
 
+    val QrCode: ImageVector by lazy {
+        icon(
+            "QrCode",
+            "M3,3h8v8h-8z M5,5v4h4v-4z M13,3h8v8h-8z M15,5v4h4v-4z M3,13h8v8h-8z M5,15v4h4v-4z M13,13h2v2h-2z M17,13h2v2h-2z M13,17h2v2h-2z M19,15h2v2h-2z M19,19h2v2h-2z M15,19h2v2h-2z"
+        )
+    }
+
     /** Cell-signal bars: used for "check latency". */
     val Signal: ImageVector by lazy { icon("Signal", "M17,4h3v16h-3V4zM5,14h3v6H5V14zM11,9h3v11h-3V9z") }
 

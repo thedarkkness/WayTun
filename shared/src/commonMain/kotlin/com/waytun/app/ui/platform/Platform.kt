@@ -1,6 +1,7 @@
 package com.waytun.app.ui.platform
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ImageBitmap
 
 /** System back (gesture/button) handling; desktop has none, so screens keep their own back arrow. */
 @Composable
@@ -28,3 +29,10 @@ fun formatBytes(bytes: Long, units: List<String>): String {
 
 /** The number with up to [maxFractionDigits] digits and the locale's decimal separator. */
 expect fun formatDecimal(value: Double, maxFractionDigits: Int): String
+
+/** A black-on-white QR code of [text], or null when it doesn't fit even at the lowest error correction. */
+expect fun qrCodeImage(text: String, sizePx: Int = 800): ImageBitmap?
+
+/** Puts plain text on the system clipboard. */
+@Composable
+expect fun rememberClipboardWriter(): (String) -> Unit

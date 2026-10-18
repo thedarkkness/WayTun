@@ -1,6 +1,17 @@
 package com.waytun.app.ui.platform
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.WriterException
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
+import java.awt.image.BufferedImage
 import java.text.DateFormat
 import java.text.NumberFormat
 import java.util.Date
@@ -27,3 +38,20 @@ actual val operatingSystemName: String get() = "${System.getProperty("os.name")}
 
 actual fun formatDecimal(value: Double, maxFractionDigits: Int): String =
     NumberFormat.getNumberInstance().apply { maximumFractionDigits = maxFractionDigits }.format(value)
+
+actual fun qrCodeImage(text: String, sizePx: Int): ImageBitmap? {
+    val hints = mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.L, EncodeHintType.MARGIN to 1)
+    val matrix = try {
+        QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
+    } catch (e: WriterException) {
+        return null
+    }
+    val image = BufferedImage(sizePx, sizePx, BufferedImage.TYPE_INT_RGB)
+    for (x in 0 until sizePx) for (y in 0 until sizePx) image.setRGB(x, y, if (matrix.get(x, y)) 0x000000 else 0xFFFFFF)
+    return image.toComposeImageBitmap()
+}
+
+@Composable
+actual fun rememberClipboardWriter(): (String) -> Unit = remember {
+    { text -> Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null) }
+}

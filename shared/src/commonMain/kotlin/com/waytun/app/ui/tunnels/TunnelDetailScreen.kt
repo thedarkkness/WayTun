@@ -1,5 +1,21 @@
 package com.waytun.app.ui.tunnels
 
+import com.waytun.app.res.Res
+import com.waytun.app.res.action_back
+import com.waytun.app.res.action_cancel
+import com.waytun.app.res.action_copy
+import com.waytun.app.res.action_delete
+import com.waytun.app.res.action_save
+import com.waytun.app.res.action_show_qr
+import com.waytun.app.res.app_name
+import com.waytun.app.res.config_copied
+import com.waytun.app.res.delete_tunnel_message
+import com.waytun.app.res.delete_tunnel_title
+import com.waytun.app.res.detail_label_config
+import com.waytun.app.res.detail_label_name
+import com.waytun.app.res.detail_load_failed
+import com.waytun.app.res.json_copied
+import com.waytun.app.res.qr_too_large
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,10 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
-import android.content.ClipboardManager
-import android.content.ClipData
 import com.waytun.app.ui.components.WayTunSnackbarHost
 import com.waytun.app.ui.components.showWayTun
 import androidx.compose.material3.SnackbarHostState
@@ -45,33 +58,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.waytun.app.ui.AppContainer
+import com.waytun.app.ui.LocalAppContainer
+import com.waytun.app.ui.resolve
+import com.waytun.app.ui.platform.PlatformBackHandler
+import com.waytun.app.ui.platform.qrCodeImage
+import com.waytun.app.ui.platform.rememberClipboardWriter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.waytun.app.R
-import com.waytun.app.core.qr.QrCodeGenerator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TunnelDetailScreen(
+    tunnelId: String,
     onBack: () -> Unit,
-    viewModel: TunnelDetailViewModel = hiltViewModel()
+    container: AppContainer = LocalAppContainer.current,
+    viewModel: TunnelDetailViewModel = viewModel(key = tunnelId) { TunnelDetailViewModel(tunnelId, container) }
 ) {
     // A back gesture closes the screen exactly like the arrow does (same slide), not with the system's shrinking preview.
-    androidx.activity.compose.BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val pageScroll = rememberScrollState()
-    val context = LocalContext.current
+    val copyToClipboard = rememberClipboardWriter()
     val scope = rememberCoroutineScope()
-    val jsonCopied = stringResource(R.string.json_copied)
-    val configCopied = stringResource(R.string.config_copied)
+    val jsonCopied = stringResource(Res.string.json_copied)
+    val configCopied = stringResource(Res.string.config_copied)
     val isJson = uiState.configText.trimStart().startsWith("{")
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showQrDialog by remember { mutableStateOf(false) }
@@ -79,7 +96,7 @@ fun TunnelDetailScreen(
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collect { event ->
             when (event) {
-                is TunnelDetailEvent.Message -> snackbarHostState.showWayTun(event.text, event.isError)
+                is TunnelDetailEvent.Message -> snackbarHostState.showWayTun(event.text.resolve(), event.isError)
                 TunnelDetailEvent.Saved -> onBack()
                 TunnelDetailEvent.Deleted -> onBack()
             }
@@ -89,49 +106,49 @@ fun TunnelDetailScreen(
     if (showDeleteConfirm) {
         GlassAlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(stringResource(R.string.delete_tunnel_title)) },
-            text = { Text(stringResource(R.string.delete_tunnel_message, uiState.name)) },
+            title = { Text(stringResource(Res.string.delete_tunnel_title)) },
+            text = { Text(stringResource(Res.string.delete_tunnel_message, uiState.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     viewModel.onDelete()
-                }) { Text(stringResource(R.string.action_delete)) }
+                }) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
     }
 
     if (showQrDialog) {
-        val qrBitmap = remember(uiState.configText) { QrCodeGenerator.generate(uiState.configText) }
+        val qrBitmap = remember(uiState.configText) { qrCodeImage(uiState.configText) }
         GlassAlertDialog(
             onDismissRequest = { showQrDialog = false },
             title = { Text(uiState.name) },
             text = {
                 if (qrBitmap != null) {
                     Image(
-                        bitmap = qrBitmap.asImageBitmap(),
+                        bitmap = qrBitmap,
                         contentDescription = uiState.name,
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    Text(stringResource(R.string.qr_too_large))
+                    Text(stringResource(Res.string.qr_too_large))
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showQrDialog = false }) { Text(stringResource(R.string.action_back)) }
+                TextButton(onClick = { showQrDialog = false }) { Text(stringResource(Res.string.action_back)) }
             }
         )
     }
 
     GlassScaffold(
-        title = { Text(uiState.name.ifBlank { stringResource(R.string.app_name) }, maxLines = 1) },
+        title = { Text(uiState.name.ifBlank { stringResource(Res.string.app_name) }, maxLines = 1) },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
             }
         },
         actions = {
@@ -139,22 +156,21 @@ fun TunnelDetailScreen(
             // delete button (the next update brings it back), so both only appear for hand-imported configs.
             if (!isJson && !uiState.isLoading && !uiState.loadFailed) {
                 IconButton(onClick = {
-                    context.getSystemService(ClipboardManager::class.java)
-                        ?.setPrimaryClip(ClipData.newPlainText("config", uiState.configText))
+                    copyToClipboard(uiState.configText)
                     scope.launch { snackbarHostState.showWayTun(configCopied) }
                 }) {
-                    Icon(AppIcons.ContentCopy, contentDescription = stringResource(R.string.action_copy))
+                    Icon(AppIcons.ContentCopy, contentDescription = stringResource(Res.string.action_copy))
                 }
                 IconButton(onClick = { showQrDialog = true }) {
                     Icon(
-                        painterResource(R.drawable.ic_qr_code),
-                        contentDescription = stringResource(R.string.action_show_qr)
+                        AppIcons.QrCode,
+                        contentDescription = stringResource(Res.string.action_show_qr)
                     )
                 }
             }
             if (!isJson) {
                 IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete))
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.action_delete))
                 }
             }
         },
@@ -164,7 +180,7 @@ fun TunnelDetailScreen(
                     onClick = { viewModel.onSave() },
                     size = 56.dp,
                     accent = MaterialTheme.colorScheme.primary
-                ) { Icon(Icons.Default.Check, contentDescription = stringResource(R.string.action_save)) }
+                ) { Icon(Icons.Default.Check, contentDescription = stringResource(Res.string.action_save)) }
             }
         }
     ) { innerPadding ->
@@ -178,7 +194,7 @@ fun TunnelDetailScreen(
             uiState.loadFailed -> Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
-            ) { Text(stringResource(R.string.detail_load_failed)) }
+            ) { Text(stringResource(Res.string.detail_load_failed)) }
 
             isJson -> Column(
                 modifier = Modifier
@@ -192,15 +208,14 @@ fun TunnelDetailScreen(
                 GlassTextField(
                     value = uiState.name,
                     onValueChange = viewModel::onNameChanged,
-                    label = stringResource(R.string.detail_label_name),
+                    label = stringResource(Res.string.detail_label_name),
                     singleLine = true
                 )
                 // A panel-provided Xray config as readable colored JSON; the card fills the rest of the screen.
                 JsonLinesCard(
                     lines = uiState.jsonLines,
                     onCopy = {
-                        context.getSystemService(ClipboardManager::class.java)
-                            ?.setPrimaryClip(ClipData.newPlainText("config", uiState.jsonLines.joinToString("\n")))
+                        copyToClipboard(uiState.jsonLines.joinToString("\n"))
                         scope.launch { snackbarHostState.showWayTun(jsonCopied) }
                     },
                     modifier = Modifier.padding(top = 14.dp).weight(1f)
@@ -220,13 +235,13 @@ fun TunnelDetailScreen(
                 GlassTextField(
                     value = uiState.name,
                     onValueChange = viewModel::onNameChanged,
-                    label = stringResource(R.string.detail_label_name),
+                    label = stringResource(Res.string.detail_label_name),
                     singleLine = true
                 )
                 GlassTextField(
                     value = uiState.configText,
                     onValueChange = viewModel::onConfigTextChanged,
-                    label = stringResource(R.string.detail_label_config),
+                    label = stringResource(Res.string.detail_label_config),
                     minLines = 8,
                     textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 19.sp),
                     modifier = Modifier.padding(top = 12.dp)

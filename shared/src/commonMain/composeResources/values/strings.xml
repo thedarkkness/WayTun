@@ -295,4 +295,5 @@
     <string name="settings_section_theme">Theme</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="import_error_conf_unsupported">WireGuard and AmneziaWG configs aren\'t supported on this platform yet</string>
 </resources>
