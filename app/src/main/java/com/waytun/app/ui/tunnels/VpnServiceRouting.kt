@@ -49,3 +49,11 @@ internal fun startConnect(
 internal fun sendDisconnect(context: Context, engine: Engine) {
     context.startService(Intent(context, serviceClassFor(engine)).setAction(disconnectActionFor(engine)))
 }
+
+/** Starts and stops engines by sending their VPN services the connect/disconnect intents. */
+class AndroidVpnLauncher(private val context: Context) : com.waytun.app.vpn.VpnLauncher {
+    override fun start(engine: Engine, tunnelId: String, tunnelName: String, settings: ObfuscationSettings, profile: ObfuscationProfile?) =
+        startConnect(context, engine, tunnelId, tunnelName, settings, profile)
+
+    override fun stop(engine: Engine) = sendDisconnect(context, engine)
+}

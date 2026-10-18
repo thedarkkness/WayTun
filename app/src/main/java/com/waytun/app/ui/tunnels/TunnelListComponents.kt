@@ -545,11 +545,12 @@ fun TunnelRow(
 private fun PingChip(tunnel: TunnelListItem, onPing: () -> Unit) {
     val colors = WayTunTheme.colors
     val ping = tunnel.ping
+    val millis = ping?.millis
     val (text, tint) = when {
         ping == null -> null to MaterialTheme.colorScheme.onSurfaceVariant
         ping.udpOnly -> "UDP" to MaterialTheme.colorScheme.onSurfaceVariant
-        ping.millis == null -> "—" to colors.danger
-        else -> stringResource(R.string.tunnel_ping_ms, ping.millis) to colors.ping(ping.millis)
+        millis == null -> "—" to colors.danger
+        else -> stringResource(R.string.tunnel_ping_ms, millis) to colors.ping(millis)
     }
     Box(
         contentAlignment = Alignment.Center,

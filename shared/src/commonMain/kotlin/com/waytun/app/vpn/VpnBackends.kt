@@ -1,26 +1,39 @@
 package com.waytun.app.vpn
 
+import com.waytun.app.core.obfuscation.ObfuscationProfile
 import com.waytun.app.core.obfuscation.ObfuscationSettings
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import com.waytun.app.core.parser.TunnelProtocol
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val STOP_TIMEOUT_MS = 5_000L
 
-/** UI-process view of all engines (read-only mirrors, see vpn/remote). */
-@Singleton
-class VpnBackends @Inject constructor(
-    @WireGuardBackend private val wireGuard: VpnBackend,
-    @AmneziaBackend private val amnezia: VpnBackend,
-    @XrayBackend private val xray: VpnBackend
+/** Brings engines up and down; on Android each engine is a VPN service in its own process. */
+interface VpnLauncher {
+    fun start(engine: Engine, tunnelId: String, tunnelName: String, settings: ObfuscationSettings, profile: ObfuscationProfile?)
+    fun stop(engine: Engine)
+}
+
+/**
+ * The UI's view of all engines (on Android read-only mirrors of the service processes, see vpn/remote). An engine a
+ * platform doesn't have yet is reported as permanently disconnected and refuses to start.
+ */
+class VpnBackends(
+    private val backends: Map<Engine, VpnBackend>,
+    private val launcher: VpnLauncher
 ) {
-    fun backend(engine: Engine): VpnBackend = when (engine) {
-        Engine.WIREGUARD -> wireGuard
-        Engine.AMNEZIA -> amnezia
-        Engine.XRAY -> xray
-    }
+    private val unavailable = UnavailableBackend()
+
+    fun backend(engine: Engine): VpnBackend = backends[engine] ?: unavailable
+
+    fun isAvailable(engine: Engine): Boolean = engine in backends
+
+    fun start(engine: Engine, tunnelId: String, tunnelName: String, settings: ObfuscationSettings, profile: ObfuscationProfile?) =
+        launcher.start(engine, tunnelId, tunnelName, settings, profile)
+
+    fun stop(engine: Engine) = launcher.stop(engine)
 
     val all: List<Pair<Engine, VpnBackend>> get() = Engine.entries.map { it to backend(it) }
 
@@ -57,4 +70,12 @@ class VpnBackends @Inject constructor(
             }
         }
     }
+}
+
+private class UnavailableBackend : VpnBackend {
+    override val state: StateFlow<TunnelState> = MutableStateFlow(TunnelState.Disconnected)
+    override val activeTunnelId: StateFlow<String?> = MutableStateFlow(null)
+    override suspend fun start(tunnel: ActiveTunnel): Result<Unit> = Result.failure(UnsupportedOperationException("Not available on this platform yet"))
+    override suspend fun stop(): Result<Unit> = Result.success(Unit)
+    override fun stats(): TunnelStats? = null
 }
